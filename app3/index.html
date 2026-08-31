@@ -1,0 +1,767 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>중2 과학 - 저항, 전류, 전압 사이의 관계 가상 실험실</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js for V-I Graph -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
+        body {
+            font-family: 'Pretendard', sans-serif;
+            background-color: #f8fafc;
+        }
+        .digital-readout {
+            font-family: 'Courier New', Courier, monospace;
+            background-color: #0f172a;
+            color: #38bdf8;
+            text-shadow: 0 0 8px rgba(56, 189, 248, 0.6);
+        }
+        .digital-readout-red {
+            font-family: 'Courier New', Courier, monospace;
+            background-color: #0f172a;
+            color: #f87171;
+            text-shadow: 0 0 8px rgba(248, 113, 113, 0.6);
+        }
+    </style>
+</head>
+<body class="text-slate-800 min-h-screen flex flex-col">
+
+    <header class="bg-indigo-700 text-white shadow-md">
+        <div class="max-w-7xl mx-auto px-4 py-4 flex flex-col md:flex-row justify-between items-center gap-2">
+            <div class="flex items-center space-x-3">
+                <i class="fa-solid font-bold fa-bolt text-yellow-300 text-2xl"></i>
+                <h1 class="text-xl md:text-2xl font-bold">중2 과학 가상 실험실</h1>
+                <span class="bg-indigo-900 text-indigo-200 text-xs px-2.5 py-1 rounded-full border border-indigo-500">전기 회로 탐구</span>
+            </div>
+            <div class="text-sm bg-indigo-800 px-3 py-1.5 rounded-lg border border-indigo-600">
+                <i class="fa-solid fa-book-open mr-1.5"></i>단원: 저항, 전류, 전압 사이의 관계
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-1 max-w-7xl w-full mx-auto p-4 md:p-6 flex flex-col gap-6">
+        <!-- Navigation Tabs -->
+        <div class="flex flex-wrap border-b border-gray-300 bg-white rounded-t-xl p-2 gap-2 shadow-sm">
+            <button id="tab-1-btn" onclick="switchTab(1)" class="flex-1 min-w-[140px] py-3 px-4 font-bold rounded-lg text-sm md:text-base transition-all flex items-center justify-center gap-2 bg-indigo-600 text-white shadow">
+                <span class="w-6 h-6 rounded-full bg-white text-indigo-600 flex items-center justify-center text-xs font-black">1</span>
+                탐구 ① 저항과 전류
+            </button>
+            <button id="tab-2-btn" onclick="switchTab(2)" class="flex-1 min-w-[140px] py-3 px-4 font-bold rounded-lg text-sm md:text-base transition-all flex items-center justify-center gap-2 bg-slate-100 text-slate-600 hover:bg-slate-200">
+                <span class="w-6 h-6 rounded-full bg-slate-300 text-slate-700 flex items-center justify-center text-xs font-black">2</span>
+                탐구 ② 전압과 전류
+            </button>
+            <button id="tab-3-btn" onclick="switchTab(3)" class="flex-1 min-w-[140px] py-3 px-4 font-bold rounded-lg text-sm md:text-base transition-all flex items-center justify-center gap-2 bg-slate-100 text-slate-600 hover:bg-slate-200">
+                <span class="w-6 h-6 rounded-full bg-slate-300 text-slate-700 flex items-center justify-center text-xs font-black">3</span>
+                정리 및 결론 도출
+            </button>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            
+            <!-- Left Side: Interactive Circuit Workbench (7 cols) -->
+            <div class="lg:col-span-7 flex flex-col gap-4">
+                <div class="bg-white p-4 md:p-5 rounded-2xl shadow-sm border border-slate-200">
+                    <div class="flex justify-between items-center mb-3">
+                        <h2 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+                            <i class="fa-solid fa-microchip text-indigo-600"></i>
+                            가상 전기 회로 실험대
+                        </h2>
+                        <div class="flex items-center gap-2 text-xs font-semibold">
+                            <span id="circuit-status" class="px-2.5 py-1 rounded-full bg-rose-100 text-rose-700 border border-rose-200 flex items-center gap-1">
+                                <span class="w-2 h-2 rounded-full bg-rose-500 animate-pulse"></span> 스위치 열림 (전류 없음)
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- Canvas Circuit Visualization -->
+                    <div class="relative w-full bg-slate-900 rounded-xl overflow-hidden border border-slate-700 shadow-inner" style="height: 320px;">
+                        <canvas id="circuitCanvas" class="w-full h-full block"></canvas>
+                        
+                        <!-- HUD Overlays on Canvas -->
+                        <div class="absolute top-3 left-3 bg-slate-800/80 backdrop-blur-sm p-2 rounded-lg border border-slate-700 text-xs text-slate-300 space-y-1">
+                            <div><i class="fa-solid fa-vial text-cyan-400 w-4"></i> 현재 니크롬선: <span id="hud-wire" class="font-bold text-white">짧은 니크롬선</span></div>
+                            <div><i class="fa-solid fa-car-battery text-amber-400 w-4"></i> 설정 전압: <span id="hud-voltage" class="font-bold text-amber-300">1.5 V</span></div>
+                        </div>
+
+                        <!-- Readout Display Overlay -->
+                        <div class="absolute bottom-3 right-3 flex gap-2">
+                            <div class="bg-slate-800/90 p-2 rounded-lg border border-slate-700 flex flex-col items-center min-w-[90px]">
+                                <span class="text-[10px] text-slate-400 font-semibold mb-0.5">디지털 전압계</span>
+                                <div class="digital-readout px-2 py-0.5 rounded text-lg font-bold" id="hud-v-meter">0.00 V</div>
+                            </div>
+                            <div class="bg-slate-800/90 p-2 rounded-lg border border-slate-700 flex flex-col items-center min-w-[90px]">
+                                <span class="text-[10px] text-slate-400 font-semibold mb-0.5">디지털 전류계</span>
+                                <div class="digital-readout-red px-2 py-0.5 rounded text-lg font-bold" id="hud-a-meter">0 mA</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Controls Dashboard -->
+                    <div class="mt-4 p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-4">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <!-- Switch Button -->
+                            <div>
+                                <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">스위치 조작</label>
+                                <button id="switch-btn" onclick="toggleSwitch()" class="w-full py-3 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow transition flex items-center justify-center gap-2">
+                                    <i class="fa-solid fa-toggle-on text-xl"></i>
+                                    <span id="switch-text">스위치 닫기 (전기 연결)</span>
+                                </button>
+                            </div>
+
+                            <!-- Wire Selector -->
+                            <div>
+                                <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">니크롬선 선택</label>
+                                <div class="grid grid-cols-2 gap-2">
+                                    <button id="wire-short-btn" onclick="selectWire('short')" class="py-2.5 px-3 rounded-lg border-2 font-bold text-xs flex items-center justify-center gap-1.5 transition border-indigo-600 bg-indigo-50 text-indigo-700">
+                                        <i class="fa-solid fa-minus text-lg"></i> 짧은 니크롬선
+                                    </button>
+                                    <button id="wire-long-btn" onclick="selectWire('long')" class="py-2.5 px-3 rounded-lg border-2 font-bold text-xs flex items-center justify-center gap-1.5 transition border-slate-300 bg-white text-slate-600 hover:bg-slate-100">
+                                        <i class="fa-solid fa-grip-lines text-lg"></i> 긴 니크롬선
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Voltage Controller -->
+                        <div>
+                            <div class="flex justify-between items-center mb-1">
+                                <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">전원 장치 전압 설정</label>
+                                <span class="text-sm font-bold text-indigo-600 bg-indigo-100 px-2.5 py-0.5 rounded-full" id="voltage-val-display">1.5 V</span>
+                            </div>
+                            <input type="range" id="voltage-slider" min="0" max="6" step="1.5" value="1.5" oninput="updateVoltage(this.value)" class="w-full accent-indigo-600 cursor-pointer h-2 bg-slate-200 rounded-lg">
+                            <div class="flex justify-between text-[11px] text-slate-400 font-semibold px-1 mt-1">
+                                <span>0 V</span>
+                                <span>1.5 V</span>
+                                <span>3.0 V</span>
+                                <span>4.5 V</span>
+                                <span>6.0 V</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Safety Note Box -->
+                <div class="bg-amber-50 border border-amber-200 rounded-xl p-3.5 flex items-start gap-3">
+                    <i class="fa-solid fa-triangle-exclamation text-amber-500 text-lg mt-0.5"></i>
+                    <div class="text-xs text-amber-900 leading-relaxed">
+                        <strong class="font-bold">탐구 지도 유의점:</strong> 전기 회로에 계속 전류가 흐르면 니크롬선에 열이 발생하여 위험하므로, 측정 후에는 바로 스위치를 열어 과열을 방지하세요.
+                    </div>
+                </div>
+            </div>
+
+            <div class="lg:col-span-5 flex flex-col gap-4">
+                
+                <!-- TAB 1 CONTENT -->
+                <div id="content-tab-1" class="tab-content flex flex-col gap-4">
+                    <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
+                        <div class="flex items-center gap-2 mb-3">
+                            <span class="bg-indigo-100 text-indigo-700 text-xs font-bold px-2 py-1 rounded">탐구 ①</span>
+                            <h3 class="font-bold text-slate-800 text-base">저항과 전류 사이의 관계 탐구하기</h3>
+                        </div>
+                        
+                        <ol class="list-decimal list-inside text-xs text-slate-600 space-y-2 mb-4 bg-slate-50 p-3 rounded-lg border border-slate-100">
+                            <li>전원 장치의 전압을 <strong class="text-indigo-600">1.5 V</strong>로 맞춥니다.</li>
+                            <li>스위치를 닫아 <strong class="text-slate-800">짧은 니크롬선</strong>에 흐르는 전류의 세기를 측정하여 표에 기록합니다.</li>
+                            <li><strong class="text-slate-800">긴 니크롬선</strong>으로 교체한 후 과정 2를 반복합니다.</li>
+                        </ol>
+
+                        <button onclick="recordDataTab1()" class="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm rounded-xl transition shadow-sm mb-4 flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-pen-to-square"></i> 현재 전류 측정값 표에 기록하기
+                        </button>
+
+                        <!-- Table 1 -->
+                        <div class="overflow-hidden border border-slate-200 rounded-xl mb-4">
+                            <table class="w-full text-xs text-center">
+                                <thead class="bg-slate-100 text-slate-700 font-bold border-b border-slate-200">
+                                    <tr>
+                                        <th class="py-2.5 px-3">구분 (전압 1.5 V 고정)</th>
+                                        <th class="py-2.5 px-3 bg-indigo-50/50 text-indigo-900">짧은 니크롬선</th>
+                                        <th class="py-2.5 px-3 bg-slate-50">긴 니크롬선</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-slate-200 bg-white">
+                                    <tr>
+                                        <td class="py-3 px-3 font-semibold text-slate-600 bg-slate-50">전류의 세기 (mA)</td>
+                                        <td id="t1-val-short" class="py-3 px-3 font-bold text-indigo-600 text-sm">-</td>
+                                        <td id="t1-val-long" class="py-3 px-3 font-bold text-slate-700 text-sm">-</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div class="space-y-4 border-t border-slate-100 pt-4">
+                            <div class="space-y-2">
+                                <label class="text-xs font-bold text-slate-700 block flex items-center gap-1">
+                                    <i class="fa-solid fa-circle-question text-indigo-500"></i>
+                                    Q1. 어느 쪽의 저항이 더 큰가요?
+                                </label>
+                                <textarea id="q1-answer" placeholder="의견을 직접 적어보세요..." class="w-full p-2.5 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none resize-none h-16"></textarea>
+                            </div>
+
+                            <button onclick="toggleAnswer('q1-model-ans')" class="w-full py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs rounded-lg transition flex items-center justify-center gap-1">
+                                <i class="fa-solid fa-lightbulb text-amber-500"></i> 교과서 모범 답안 보기
+                            </button>
+                            <div id="q1-model-ans" class="hidden p-3 bg-indigo-50 border border-indigo-200 rounded-lg text-xs text-indigo-950 leading-relaxed">
+                                <strong>[모범 답안]</strong> <br>
+                                <strong class="text-indigo-700">긴 니크롬선</strong>의 저항이 더 큽니다. 니크롬선의 길이가 길수록 전류의 흐름을 방해하는 정도(저항)가 커지므로, 동일한 전압에서 더 적은 전류가 흐릅니다.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TAB 2 CONTENT -->
+                <div id="content-tab-2" class="tab-content hidden flex flex-col gap-4">
+                    <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
+                        <div class="flex items-center gap-2 mb-3">
+                            <span class="bg-amber-100 text-amber-800 text-xs font-bold px-2 py-1 rounded">탐구 ②</span>
+                            <h3 class="font-bold text-slate-800 text-base">전압과 전류 사이의 관계 탐구하기</h3>
+                        </div>
+
+                        <ol class="list-decimal list-inside text-xs text-slate-600 space-y-1.5 mb-3 bg-slate-50 p-3 rounded-lg border border-slate-100">
+                            <li>회로를 <strong class="text-indigo-600">긴 니크롬선</strong>으로 설정합니다.</li>
+                            <li>전압을 <strong>0 V부터 6 V까지 1.5 V씩 높이면서</strong> 전류의 세기를 측정하여 표에 추가합니다.</li>
+                        </ol>
+
+                        <button onclick="recordDataTab2()" class="w-full py-2.5 bg-amber-500 hover:bg-amber-600 text-white font-bold text-sm rounded-xl transition shadow-sm mb-3 flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-plus-circle"></i> 현재 [전압 - 전류] 측정값 기록하기
+                        </button>
+
+                        <!-- Table 2 -->
+                        <div class="overflow-x-auto border border-slate-200 rounded-xl mb-4">
+                            <table class="w-full text-xs text-center">
+                                <thead class="bg-slate-100 text-slate-700 font-bold border-b border-slate-200">
+                                    <tr>
+                                        <th class="py-2 px-2 bg-slate-100">전압 (V)</th>
+                                        <th class="py-2 px-2">0</th>
+                                        <th class="py-2 px-2">1.5</th>
+                                        <th class="py-2 px-2">3.0</th>
+                                        <th class="py-2 px-2">4.5</th>
+                                        <th class="py-2 px-2">6.0</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-slate-200 bg-white">
+                                    <tr>
+                                        <td class="py-2.5 px-2 font-semibold text-slate-600 bg-slate-50">전류의 세기 (mA)</td>
+                                        <td id="t2-v0" class="py-2.5 px-1 font-bold text-amber-600">-</td>
+                                        <td id="t2-v1" class="py-2.5 px-1 font-bold text-amber-600">-</td>
+                                        <td id="t2-v2" class="py-2.5 px-1 font-bold text-amber-600">-</td>
+                                        <td id="t2-v3" class="py-2.5 px-1 font-bold text-amber-600">-</td>
+                                        <td id="t2-v4" class="py-2.5 px-1 font-bold text-amber-600">-</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- Real-time Chart Canvas -->
+                        <div class="mb-4">
+                            <h4 class="text-xs font-bold text-slate-600 mb-2 flex items-center gap-1">
+                                <i class="fa-solid fa-chart-line text-amber-500"></i> 전압-전류 관계 그래프
+                            </h4>
+                            <div class="bg-slate-50 p-2 rounded-xl border border-slate-200 h-48 relative">
+                                <canvas id="viChart"></canvas>
+                            </div>
+                        </div>
+
+                        <!-- Tab 2 Question -->
+                        <div class="space-y-3 border-t border-slate-100 pt-3">
+                            <div class="space-y-1.5">
+                                <label class="text-xs font-bold text-slate-700 block flex items-center gap-1">
+                                    <i class="fa-solid fa-circle-question text-amber-500"></i>
+                                    Q2. 전압이 높을수록 전류의 세기는 어떻게 달라지나요?
+                                </label>
+                                <textarea id="q2-answer" placeholder="그래프를 보고 답을 적어보세요..." class="w-full p-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:outline-none resize-none h-14"></textarea>
+                            </div>
+
+                            <button onclick="toggleAnswer('q2-model-ans')" class="w-full py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs rounded-lg transition flex items-center justify-center gap-1">
+                                <i class="fa-solid fa-lightbulb text-amber-500"></i> 교과서 모범 답안 보기
+                            </button>
+                            <div id="q2-model-ans" class="hidden p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-950 leading-relaxed">
+                                <strong>[모범 답안]</strong> <br>
+                                전압이 높을수록 전류의 세기가 <strong class="text-amber-700">증가</strong>합니다. 그래프가 원점을 지나는 직선 형태를 나타내므로, 전압과 전류의 세기는 <strong class="text-amber-700">비례 관계</strong>입니다.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TAB 3 CONTENT -->
+                <div id="content-tab-3" class="tab-content hidden flex flex-col gap-4">
+                    <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 space-y-4">
+                        <div class="flex items-center gap-2 mb-1">
+                            <span class="bg-emerald-100 text-emerald-800 text-xs font-bold px-2 py-1 rounded">정리해 볼까</span>
+                            <h3 class="font-bold text-slate-800 text-base">자료 분석 및 결론 도출</h3>
+                        </div>
+
+                        <!-- Question 1 Analysis -->
+                        <div class="bg-slate-50 p-3.5 rounded-xl border border-slate-200 space-y-2">
+                            <div class="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                                <span class="bg-indigo-600 text-white w-4 h-4 rounded-full flex items-center justify-center text-[10px]">1</span>
+                                탐구 ①에서 저항과 전류는 어떤 관계가 있는지 이야기해 보자.
+                            </div>
+                            <button onclick="toggleAnswer('summary-ans-1')" class="text-xs text-indigo-600 font-bold hover:underline flex items-center gap-1">
+                                <i class="fa-solid fa-circle-check"></i> 모범 답안 확인
+                            </button>
+                            <div id="summary-ans-1" class="hidden text-xs bg-white p-2.5 rounded-lg border border-slate-200 text-slate-700 leading-relaxed">
+                                저항이 클수록(긴 니크롬선) 전류의 세기는 작아지므로, 저항과 전류의 세기는 <strong class="text-indigo-600">반비례 관계</strong>이다.
+                            </div>
+                        </div>
+
+                        <!-- Question 2 Analysis -->
+                        <div class="bg-slate-50 p-3.5 rounded-xl border border-slate-200 space-y-2">
+                            <div class="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                                <span class="bg-amber-600 text-white w-4 h-4 rounded-full flex items-center justify-center text-[10px]">2</span>
+                                탐구 ②에서 전압과 전류는 어떤 관계가 있는지 그래프를 바탕으로 이야기해 보자.
+                            </div>
+                            <button onclick="toggleAnswer('summary-ans-2')" class="text-xs text-amber-600 font-bold hover:underline flex items-center gap-1">
+                                <i class="fa-solid fa-circle-check"></i> 모범 답안 확인
+                            </button>
+                            <div id="summary-ans-2" class="hidden text-xs bg-white p-2.5 rounded-lg border border-slate-200 text-slate-700 leading-relaxed">
+                                전압이 커질수록 전류의 세기 도 증가한다. 그래프의 기울기가 일정하고 원점을 지나는 1차 함수를 나타내므로, 전압과 전류의 세기는 <strong class="text-amber-600">비례 관계</strong>이다.
+                            </div>
+                        </div>
+
+                        <!-- Question 3 Final Conclusion -->
+                        <div class="bg-emerald-50 p-4 rounded-xl border border-emerald-200 space-y-2">
+                            <div class="text-xs font-bold text-emerald-950 flex items-center gap-1.5">
+                                <i class="fa-solid fa-trophy text-emerald-600 text-base"></i>
+                                결론 도출: 탐구 ①과 탐구 ②의 결과를 종합하여 저항, 전류, 전압 사이의 관계를 말해보자.
+                            </div>
+                            <button onclick="toggleAnswer('summary-ans-3')" class="w-full py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-lg transition shadow-sm">
+                                최종 결론 및 옴의 법칙 공식 확인하기
+                            </button>
+                            <div id="summary-ans-3" class="hidden text-xs bg-white p-3 rounded-lg border border-emerald-200 text-emerald-950 space-y-2 leading-relaxed">
+                                <p class="font-bold text-sm text-emerald-800">"전류의 세기는 전압이 클수록, 저항이 작을수록 커진다."</p>
+                                <hr class="border-emerald-100">
+                                <p>이를 공식으로 나타내면 <strong>옴의 법칙(Ohm's Law)</strong>이 됩니다:</p>
+                                <div class="bg-emerald-100/60 p-2 rounded text-center font-bold text-emerald-900 text-sm">
+                                    전류의 세기(I) = <span class="inline-block border-b border-emerald-800">전압(V)</span> / 저항(R)
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // --- State Variables ---
+        let state = {
+            isSwitchClosed: false,
+            wireType: 'short', // 'short' or 'long'
+            voltage: 1.5,
+            electrons: [],
+            activeTab: 1
+        };
+
+        // Wire resistance values
+        // Short wire: 10 ohms -> @1.5V = 150mA
+        // Long wire: 30 ohms  -> @1.5V = 50mA, @3.0V = 100mA, @4.5V = 150mA, @6.0V = 200mA
+        const RESISTANCE = {
+            short: 10,
+            long: 30
+        };
+
+        // Chart Instance
+        let viChart = null;
+        let chartDataMap = { 0: null, 1.5: null, 3.0: null, 4.5: null, 6.0: null };
+
+        // --- Canvas Initialization ---
+        const canvas = document.getElementById('circuitCanvas');
+        const ctx = canvas.getContext('2d');
+
+        function resizeCanvas() {
+            canvas.width = canvas.parentElement.clientWidth;
+            canvas.height = canvas.parentElement.clientHeight;
+            initElectrons();
+        }
+
+        // Initialize electron particles along the loop path
+        function initElectrons() {
+            state.electrons = [];
+            const count = 30;
+            for (let i = 0; i < count; i++) {
+                state.electrons.push({
+                    progress: i / count // 0.0 to 1.0 along loop
+                });
+            }
+        }
+
+        // Circuit Loop Geometry Calculation
+        function getLoopPoint(p, w, h) {
+            // Rectangular loop coordinates with rounded margin
+            const marginX = 80;
+            const marginY = 50;
+            const width = w - marginX * 2;
+            const height = h - marginY * 2;
+            const perimeter = 2 * (width + height);
+
+            let dist = p * perimeter;
+
+            // Top segment (left to right)
+            if (dist <= width) {
+                return { x: marginX + dist, y: marginY };
+            }
+            dist -= width;
+            // Right segment (top to bottom)
+            if (dist <= height) {
+                return { x: marginX + width, y: marginY + dist };
+            }
+            dist -= height;
+            // Bottom segment (right to left)
+            if (dist <= width) {
+                return { x: marginX + width - dist, y: marginY + height };
+            }
+            dist -= width;
+            // Left segment (bottom to top)
+            return { x: marginX, y: marginY + height - dist };
+        }
+
+        // Compute current in mA
+        function getCurrent() {
+            if (!state.isSwitchClosed) return 0;
+            const R = RESISTANCE[state.wireType];
+            const currentA = state.voltage / R;
+            return Math.round(currentA * 1000); // mA
+        }
+
+        // --- Render Loop ---
+        function drawCircuit() {
+            const w = canvas.width;
+            const h = canvas.height;
+            if (!w || !h) return;
+
+            ctx.clearRect(0, 0, w, h);
+
+            const marginX = 80;
+            const marginY = 50;
+            const loopW = w - marginX * 2;
+            const loopH = h - marginY * 2;
+
+            // 1. Draw Wires (Copper lines)
+            ctx.strokeStyle = state.isSwitchClosed ? '#38bdf8' : '#64748b';
+            ctx.lineWidth = 6;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+
+            ctx.beginPath();
+            ctx.strokeRect(marginX, marginY, loopW, loopH);
+
+            // 2. Components Placement
+            // Power Supply (Bottom Left/Center)
+            drawPowerSupply(marginX + loopW * 0.3, marginY + loopH);
+
+            // Switch (Top Center)
+            drawSwitch(marginX + loopW * 0.5, marginY, state.isSwitchClosed);
+
+            // Resistor / Nichrome Wire (Bottom Center-Right)
+            drawNichromeWire(marginX + loopW * 0.75, marginY + loopH, state.wireType);
+
+            // Meters
+            drawDigitalMeter(marginX, marginY + loopH * 0.5, 'V', (state.isSwitchClosed ? state.voltage.toFixed(2) : '0.00') + ' V');
+            drawDigitalMeter(marginX + loopW, marginY + loopH * 0.5, 'A', getCurrent() + ' mA');
+
+            // 3. Draw & Animate Electrons
+            const current = getCurrent();
+            if (state.isSwitchClosed && current > 0) {
+                const speed = (current / 200) * 0.005 + 0.001; // Speed scales with current
+                ctx.fillStyle = '#fde047';
+
+                state.electrons.forEach(e => {
+                    e.progress = (e.progress + speed) % 1.0;
+                    const pt = getLoopPoint(e.progress, w, h);
+                    ctx.beginPath();
+                    ctx.arc(pt.x, pt.y, 4, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.strokeStyle = '#eab308';
+                    ctx.lineWidth = 1;
+                    ctx.stroke();
+                });
+            }
+
+            // Update HUD text
+            document.getElementById('hud-v-meter').innerText = (state.isSwitchClosed ? state.voltage.toFixed(2) : '0.00') + ' V';
+            document.getElementById('hud-a-meter').innerText = getCurrent() + ' mA';
+
+            requestAnimationFrame(drawCircuit);
+        }
+
+        function drawPowerSupply(x, y) {
+            ctx.fillStyle = '#334155';
+            ctx.fillRect(x - 30, y - 18, 60, 36);
+            ctx.strokeStyle = '#94a3b8';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(x - 30, y - 18, 60, 36);
+
+            // Battery Symbol Text
+            ctx.fillStyle = '#f8fafc';
+            ctx.font = 'bold 11px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('전원 장치', x, y - 2);
+            ctx.fillStyle = '#fbbf24';
+            ctx.fillText(`${state.voltage}V`, x, y + 12);
+        }
+
+        function drawSwitch(x, y, isClosed) {
+            ctx.fillStyle = '#1e293b';
+            ctx.fillRect(x - 25, y - 12, 50, 24);
+
+            // Terminal dots
+            ctx.fillStyle = '#cbd5e1';
+            ctx.beginPath();
+            ctx.arc(x - 15, y, 4, 0, Math.PI * 2);
+            ctx.arc(x + 15, y, 4, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Switch Blade
+            ctx.strokeStyle = '#ef4444';
+            ctx.lineWidth = 4;
+            ctx.beginPath();
+            ctx.moveTo(x - 15, y);
+            if (isClosed) {
+                ctx.lineTo(x + 15, y);
+            } else {
+                ctx.lineTo(x + 10, y - 16);
+            }
+            ctx.stroke();
+        }
+
+        function drawNichromeWire(x, y, type) {
+            const isShort = (type === 'short');
+            const length = isShort ? 35 : 75;
+            const color = isShort ? '#818cf8' : '#f43f5e';
+
+            // Background Board
+            ctx.fillStyle = '#1e293b';
+            ctx.fillRect(x - length/2 - 8, y - 14, length + 16, 28);
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 2;
+            ctx.strokeRect(x - length/2 - 8, y - 14, length + 16, 28);
+
+            // Wire Representation
+            ctx.strokeStyle = color;
+            ctx.lineWidth = isShort ? 5 : 3;
+            ctx.beginPath();
+            ctx.moveTo(x - length/2, y);
+            ctx.lineTo(x + length/2, y);
+            ctx.stroke();
+
+            // Label
+            ctx.fillStyle = '#f8fafc';
+            ctx.font = '10px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText(isShort ? '짧은 니크롬선' : '긴 니크롬선', x, y + 24);
+        }
+
+        function drawDigitalMeter(x, y, type, text) {
+            const isV = (type === 'V');
+            const color = isV ? '#0284c7' : '#16a34a';
+
+            ctx.fillStyle = '#1e293b';
+            ctx.fillRect(x - 25, y - 22, 50, 44);
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 2;
+            ctx.strokeRect(x - 25, y - 22, 50, 44);
+
+            ctx.fillStyle = color;
+            ctx.font = 'bold 10px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText(isV ? '전압계' : '전류계', x, y - 8);
+
+            ctx.fillStyle = '#ffffff';
+            ctx.font = '10px monospace';
+            ctx.fillText(text, x, y + 10);
+        }
+
+        // --- Interaction Handlers ---
+        function toggleSwitch() {
+            state.isSwitchClosed = !state.isSwitchClosed;
+            const btn = document.getElementById('switch-btn');
+            const text = document.getElementById('switch-text');
+            const status = document.getElementById('circuit-status');
+
+            if (state.isSwitchClosed) {
+                btn.className = "w-full py-3 px-4 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-xl shadow transition flex items-center justify-center gap-2";
+                text.innerText = "스위치 열기 (전류 차단)";
+                status.className = "px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200 flex items-center gap-1";
+                status.innerHTML = `<span class="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span> 스위치 닫힘 (전류 흐름)`;
+            } else {
+                btn.className = "w-full py-3 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow transition flex items-center justify-center gap-2";
+                text.innerText = "스위치 닫기 (전기 연결)";
+                status.className = "px-2.5 py-1 rounded-full bg-rose-100 text-rose-700 border border-rose-200 flex items-center gap-1";
+                status.innerHTML = `<span class="w-2 h-2 rounded-full bg-rose-500 animate-pulse"></span> 스위치 열림 (전류 없음)`;
+            }
+        }
+
+        function selectWire(type) {
+            state.wireType = type;
+            const shortBtn = document.getElementById('wire-short-btn');
+            const longBtn = document.getElementById('wire-long-btn');
+            const hudWire = document.getElementById('hud-wire');
+
+            if (type === 'short') {
+                shortBtn.className = "py-2.5 px-3 rounded-lg border-2 font-bold text-xs flex items-center justify-center gap-1.5 transition border-indigo-600 bg-indigo-50 text-indigo-700";
+                longBtn.className = "py-2.5 px-3 rounded-lg border-2 font-bold text-xs flex items-center justify-center gap-1.5 transition border-slate-300 bg-white text-slate-600 hover:bg-slate-100";
+                hudWire.innerText = "짧은 니크롬선";
+            } else {
+                longBtn.className = "py-2.5 px-3 rounded-lg border-2 font-bold text-xs flex items-center justify-center gap-1.5 transition border-indigo-600 bg-indigo-50 text-indigo-700";
+                shortBtn.className = "py-2.5 px-3 rounded-lg border-2 font-bold text-xs flex items-center justify-center gap-1.5 transition border-slate-300 bg-white text-slate-600 hover:bg-slate-100";
+                hudWire.innerText = "긴 니크롬선";
+            }
+        }
+
+        function updateVoltage(val) {
+            state.voltage = parseFloat(val);
+            document.getElementById('voltage-val-display').innerText = state.voltage.toFixed(1) + ' V';
+            document.getElementById('hud-voltage').innerText = state.voltage.toFixed(1) + ' V';
+        }
+
+        function switchTab(tabNum) {
+            state.activeTab = tabNum;
+            
+            // Tab buttons highlight
+            for (let i = 1; i <= 3; i++) {
+                const btn = document.getElementById(`tab-${i}-btn`);
+                const content = document.getElementById(`content-tab-${i}`);
+                if (i === tabNum) {
+                    btn.className = "flex-1 min-w-[140px] py-3 px-4 font-bold rounded-lg text-sm md:text-base transition-all flex items-center justify-center gap-2 bg-indigo-600 text-white shadow";
+                    content.classList.remove('hidden');
+                } else {
+                    btn.className = "flex-1 min-w-[140px] py-3 px-4 font-bold rounded-lg text-sm md:text-base transition-all flex items-center justify-center gap-2 bg-slate-100 text-slate-600 hover:bg-slate-200";
+                    content.classList.add('hidden');
+                }
+            }
+
+            // Auto-configure recommended presets for each tab
+            if (tabNum === 1) {
+                updateVoltage(1.5);
+                document.getElementById('voltage-slider').value = 1.5;
+            } else if (tabNum === 2) {
+                selectWire('long');
+            }
+        }
+
+        // --- Data Recording & Table Functions ---
+        function recordDataTab1() {
+            if (!state.isSwitchClosed) {
+                alert("스위치를 닫아 전류를 먼저 흐르게 해주세요!");
+                return;
+            }
+            if (state.voltage !== 1.5) {
+                alert("탐구 1은 전압을 1.5V로 맞추고 진행해야 합니다.");
+                return;
+            }
+
+            const current = getCurrent();
+            if (state.wireType === 'short') {
+                document.getElementById('t1-val-short').innerText = current;
+            } else {
+                document.getElementById('t1-val-long').innerText = current;
+            }
+        }
+
+        function recordDataTab2() {
+            if (!state.isSwitchClosed) {
+                alert("스위치를 닫아 전류를 먼저 흐르게 해주세요!");
+                return;
+            }
+            if (state.wireType !== 'long') {
+                alert("탐구 2는 긴 니크롬선을 연결한 상태에서 진행해야 합니다.");
+                return;
+            }
+
+            const v = state.voltage;
+            const current = getCurrent();
+
+            if (v === 0) document.getElementById('t2-v0').innerText = current;
+            if (v === 1.5) document.getElementById('t2-v1').innerText = current;
+            if (v === 3.0) document.getElementById('t2-v2').innerText = current;
+            if (v === 4.5) document.getElementById('t2-v3').innerText = current;
+            if (v === 6.0) document.getElementById('t2-v4').innerText = current;
+
+            // Update Chart
+            chartDataMap[v] = current;
+            updateChart();
+        }
+
+        function toggleAnswer(id) {
+            const el = document.getElementById(id);
+            if (el.classList.contains('hidden')) {
+                el.classList.remove('hidden');
+            } else {
+                el.classList.add('hidden');
+            }
+        }
+
+        // --- Chart Initialization & Update ---
+        function initChart() {
+            const ctxChart = document.getElementById('viChart').getContext('2d');
+            viChart = new Chart(ctxChart, {
+                type: 'line',
+                data: {
+                    labels: ['0', '1.5', '3.0', '4.5', '6.0'],
+                    datasets: [{
+                        label: '전류의 세기 (mA)',
+                        data: [null, null, null, null, null],
+                        borderColor: '#f59e0b',
+                        backgroundColor: 'rgba(245, 158, 11, 0.15)',
+                        borderWidth: 3,
+                        pointBackgroundColor: '#d97706',
+                        pointRadius: 6,
+                        pointHoverRadius: 8,
+                        tension: 0, // Linear relation
+                        spanGaps: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            title: {
+                                display: true,
+                                text: '전압 (V)',
+                                font: { weight: 'bold', size: 11 }
+                            }
+                        },
+                        y: {
+                            min: 0,
+                            max: 250,
+                            title: {
+                                display: true,
+                                text: '전류의 세기 (mA)',
+                                font: { weight: 'bold', size: 11 }
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: { display: false }
+                    }
+                }
+            });
+        }
+
+        function updateChart() {
+            if (!viChart) return;
+            const keys = [0, 1.5, 3.0, 4.5, 6.0];
+            viChart.data.datasets[0].data = keys.map(k => chartDataMap[k]);
+            viChart.update();
+        }
+
+        // --- Window Onload Entry Point ---
+        window.onload = function() {
+            resizeCanvas();
+            window.addEventListener('resize', resizeCanvas);
+            initChart();
+            requestAnimationFrame(drawCircuit);
+        };
+    </script>
+</body>
+</html>
