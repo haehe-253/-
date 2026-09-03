@@ -1,0 +1,867 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
+<title>물질의 저항 실험실</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Gaegu:wght@400;700&family=Gowun+Dodum&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --cream:#FFF7EA;
+    --panel:#FFFFFF;
+    --mint:#BDE8D6;
+    --mint-dark:#7FCBAE;
+    --yellow:#FFDD8F;
+    --coral:#FF9270;
+    --coral-dark:#F0724F;
+    --plum:#4A3F55;
+    --plum-soft:#8B8098;
+    --sky:#AAD6EE;
+    --lav:#D8C8F0;
+    --line:#EADFC8;
+    --wire:#E0765A;
+    --ok:#6FBE8F;
+    --bad:#EA9090;
+    --shadow: 0 6px 0 rgba(74,63,85,0.12);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:
+      radial-gradient(circle at 8% 12%, #FFEFD2 0%, transparent 45%),
+      radial-gradient(circle at 92% 85%, #D8F0E6 0%, transparent 40%),
+      var(--cream);
+    font-family:'Gowun Dodum', sans-serif;
+    color:var(--plum);
+    min-height:100vh;
+    overflow-x:hidden;
+  }
+  h1,h2,h3, .display{ font-family:'Gaegu', sans-serif; }
+  button{ font-family:'Gowun Dodum', sans-serif; cursor:pointer; }
+  .screen{ display:none; min-height:100vh; width:100%; }
+  .screen.active{ display:flex; flex-direction:column; }
+
+  /* ---------- 공통 블롭 장식 ---------- */
+  .blob{ position:absolute; border-radius:50%; opacity:0.55; filter:blur(1px); z-index:0; pointer-events:none;}
+
+  /* ---------- 인트로 화면 ---------- */
+  #screen-intro{ align-items:center; justify-content:center; text-align:center; position:relative; padding:24px;}
+  .intro-card{
+    position:relative; z-index:1;
+    background:var(--panel);
+    border:3px solid var(--plum);
+    border-radius:32px;
+    padding:44px 40px 36px;
+    max-width:560px;
+    box-shadow: 8px 8px 0 rgba(74,63,85,0.18);
+  }
+  .intro-eyebrow{
+    display:inline-block;
+    background:var(--yellow);
+    border:2px solid var(--plum);
+    border-radius:20px;
+    padding:4px 16px;
+    font-size:15px;
+    margin-bottom:18px;
+    transform:rotate(-2deg);
+  }
+  .intro-question{
+    font-size:34px;
+    line-height:1.4;
+    margin:0 0 22px;
+  }
+  .intro-question .hl{ color:var(--coral-dark); }
+  .intro-sub{ font-size:16px; color:var(--plum-soft); line-height:1.7; margin-bottom:26px;}
+  .bulb-deco{ width:120px; height:auto; margin:0 auto 20px; display:block; }
+  .btn-primary{
+    background:var(--coral); color:#fff; border:3px solid var(--plum);
+    border-radius:999px; padding:14px 34px; font-size:19px; font-family:'Gaegu',sans-serif; font-weight:700;
+    box-shadow: 4px 4px 0 rgba(74,63,85,0.25);
+    transition: transform .12s ease;
+  }
+  .btn-primary:active{ transform: translateY(3px); box-shadow:1px 1px 0 rgba(74,63,85,0.25); }
+  .btn-secondary{
+    background:var(--panel); color:var(--plum); border:2.5px solid var(--plum);
+    border-radius:999px; padding:10px 24px; font-size:15px;
+    box-shadow: 3px 3px 0 rgba(74,63,85,0.18);
+  }
+  .btn-secondary:active{ transform: translateY(2px); box-shadow:1px 1px 0 rgba(74,63,85,0.18); }
+
+  /* ---------- 상단 미션바 (실험 화면들 공통) ---------- */
+  .mission-bar{
+    display:flex; align-items:center; gap:14px;
+    background:var(--panel);
+    border-bottom:3px solid var(--plum);
+    padding:12px 22px;
+    position:sticky; top:0; z-index:30;
+    flex-wrap:wrap;
+  }
+  .mission-badge{
+    background:var(--lav); border:2px solid var(--plum); border-radius:16px;
+    padding:6px 14px; font-size:14px; font-family:'Gaegu',sans-serif; white-space:nowrap;
+  }
+  .mission-q{ font-size:19px; font-family:'Gaegu',sans-serif; flex:1; min-width:200px;}
+  .progress-wrap{ display:flex; align-items:center; gap:8px; font-size:13px; color:var(--plum-soft); }
+  .progress-track{ width:110px; height:10px; background:var(--line); border-radius:8px; overflow:hidden; border:1.5px solid var(--plum);}
+  .progress-fill{ height:100%; background:var(--mint-dark); width:0%; transition:width .35s ease;}
+
+  /* ---------- 실험실 레이아웃 ---------- */
+  #screen-lab{ padding:0 0 30px; }
+  .lab-wrap{ display:flex; flex-direction:column; gap:0; flex:1; }
+  .workbench-zone{
+    position:relative;
+    margin:18px 22px 10px;
+    background: repeating-linear-gradient(0deg, #F3E9CC 0 2px, transparent 2px 34px),
+                repeating-linear-gradient(90deg, #F3E9CC 0 2px, transparent 2px 34px),
+                #FBF1DA;
+    border:3px dashed #D8C6A0;
+    border-radius:26px;
+    height:400px;
+    overflow:hidden;
+    touch-action:none;
+  }
+  .workbench-hint{
+    position:absolute; bottom:10px; left:50%; transform:translateX(-50%);
+    font-size:12.5px; color:var(--plum-soft); background:rgba(255,255,255,0.75);
+    padding:4px 12px; border-radius:12px; z-index:1; pointer-events:none;
+  }
+  svg.wire-layer{ position:absolute; inset:0; width:100%; height:100%; z-index:1; pointer-events:none; }
+
+  .comp{
+    position:absolute;
+    user-select:none;
+    touch-action:none;
+    cursor:grab;
+    z-index:5;
+    filter: drop-shadow(3px 4px 0 rgba(74,63,85,0.18));
+  }
+  .comp:active{ cursor:grabbing; z-index:20;}
+  .comp-label{
+    text-align:center; font-size:12px; font-family:'Gaegu',sans-serif; color:var(--plum);
+    background:#fff; border:1.5px solid var(--plum); border-radius:10px; padding:1px 8px;
+    margin-top:2px; display:inline-block; white-space:nowrap;
+  }
+  .comp-inner{ display:flex; flex-direction:column; align-items:center; }
+
+  /* 전원장치 */
+  .ps-box{ width:96px; height:70px; background:var(--sky); border:3px solid var(--plum); border-radius:14px; position:relative;}
+  .ps-dial{ width:24px; height:24px; border-radius:50%; background:#fff; border:2.5px solid var(--plum); position:absolute; top:10px;}
+  .ps-dial::after{ content:''; position:absolute; left:50%; top:50%; width:8px; height:2px; background:var(--plum); transform-origin:0 50%; transform:translateY(-1px) rotate(20deg);}
+  .ps-dial.d1{ left:10px; }
+  .ps-dial.d2{ left:42px; }
+  .ps-switch{ position:absolute; bottom:8px; right:10px; width:26px; height:12px; background:var(--mint-dark); border:2px solid var(--plum); border-radius:8px;}
+
+  /* 전구 */
+  .bulb-comp{ width:64px; height:80px; }
+  .bulb-glass{ width:52px; height:52px; border-radius:50%; background:#fffbe9; border:3px solid var(--plum); margin:0 auto; position:relative; transition: box-shadow .25s ease, background .25s ease;}
+  .bulb-glass .filament{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:20px; }
+  .bulb-base{ width:22px; height:16px; background:#bbb; border:2.5px solid var(--plum); margin:-2px auto 0; border-radius:0 0 4px 4px;}
+  .bulb-glass.lit{ background:#FFF3B0; box-shadow:0 0 18px 10px rgba(255,221,143,0.9), 0 0 40px 22px rgba(255,180,90,0.5);}
+
+  /* 스위치 */
+  .switch-comp{ width:76px; }
+  .switch-box{ width:76px; height:60px; background:#fff; border:3px solid var(--plum); border-radius:14px; display:flex; align-items:center; justify-content:center; flex-direction:column; gap:4px;}
+  .switch-track{ width:44px; height:22px; background:#E7DFF0; border:2.5px solid var(--plum); border-radius:14px; position:relative; cursor:pointer; transition:background .2s ease;}
+  .switch-track.on{ background:var(--mint-dark); }
+  .switch-knob{ width:15px; height:15px; background:#fff; border:2px solid var(--plum); border-radius:50%; position:absolute; top:1.5px; left:2px; transition:left .2s ease;}
+  .switch-track.on .switch-knob{ left:24px; }
+  .switch-state{ font-size:10px; color:var(--plum-soft); font-family:monospace; }
+
+  /* 연결부 (집게 없이 물질을 바로 연결) */
+  .slot-comp{ width:140px; }
+  .drop-gap{
+    width:140px; height:66px; border-radius:18px;
+    border:3px dashed #C9BBDD; background:#FBF8FF;
+    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px;
+    font-size:11.5px; color:var(--plum-soft); text-align:center; line-height:1.3; padding:4px;
+  }
+  .drop-gap.filled{ border-style:solid; border-color:var(--mint-dark); background:#EFFBF5; flex-direction:row; gap:8px;}
+  .drop-gap.filled.off{ border-color:#D8B8B0; background:#FFF6F0; }
+  .drop-gap.hover-ok{ background:#FFF0E5; border-color:var(--coral); }
+  .drop-gap svg{ width:26px; height:26px; flex:0 0 auto; }
+
+  /* 전류계 */
+  .amm-comp{ width:104px; }
+  .amm-box{ width:104px; height:66px; background:#3B3550; border:3px solid var(--plum); border-radius:12px; display:flex; flex-direction:column; align-items:center; justify-content:center;}
+  .amm-screen{ background:#CFE8B8; color:#233; font-family:monospace; font-size:15px; padding:3px 8px; border-radius:4px; letter-spacing:1px; min-width:64px; text-align:center;}
+  .amm-unit{ color:#e8e2f0; font-size:9px; margin-top:2px;}
+
+  /* ---------- 물질 트레이 ---------- */
+  .tray-panel{
+    margin:6px 22px 4px; background:var(--panel); border:3px solid var(--plum); border-radius:22px;
+    padding:14px 16px 16px;
+  }
+  .tray-title{ font-size:16px; font-family:'Gaegu',sans-serif; margin:0 0 8px; display:flex; align-items:center; gap:8px;}
+  .tray-strip{
+    display:flex; gap:12px; overflow-x:auto; padding:6px 2px 12px;
+    scrollbar-width:thin;
+  }
+  .tray-strip::-webkit-scrollbar{ height:8px; }
+  .tray-strip::-webkit-scrollbar-thumb{ background:var(--line); border-radius:8px;}
+
+  .chip{
+    flex:0 0 auto; width:78px; text-align:center; cursor:grab; touch-action:none; user-select:none;
+    padding:8px 4px 6px; border-radius:16px; border:2.5px solid transparent; transition: opacity .2s ease, border-color .2s ease;
+  }
+  .chip:active{ cursor:grabbing; }
+  .chip.tested{ opacity:0.45; }
+  .chip.dragging{ position:fixed; z-index:1000; pointer-events:none; }
+  .chip-icon-wrap{ width:52px; height:52px; margin:0 auto 4px; display:flex; align-items:center; justify-content:center;}
+  .chip-icon-wrap svg{ width:100%; height:100%; }
+  .chip-name{ font-size:11.5px; line-height:1.25; }
+  .chip-tag{
+    display:inline-block; margin-top:3px; font-size:10px; background:var(--mint); border:1.3px solid var(--plum);
+    border-radius:8px; padding:0 6px; font-family:monospace;
+  }
+
+  /* ---------- 관찰기록 ---------- */
+  .log-panel{ margin:6px 22px 20px; background:#FFFDF5; border:2.5px dashed #D8C6A0; border-radius:20px; padding:14px 18px;}
+  .log-title{ font-size:15px; font-family:'Gaegu',sans-serif; margin:0 0 8px;}
+  .log-list{ display:flex; flex-wrap:wrap; gap:8px; min-height:26px;}
+  .log-item{ background:#fff; border:1.5px solid var(--line); border-radius:10px; padding:3px 10px; font-size:12.5px;}
+  .log-empty{ font-size:12.5px; color:var(--plum-soft); }
+
+  .lab-footer{ display:flex; flex-direction:column; align-items:center; gap:6px; padding:6px 20px 10px; }
+  .lab-footer-note{ font-size:12.5px; color:var(--plum-soft); }
+  .hidden{ display:none !important; }
+
+  /* ---------- 연결 예시 가이드 ---------- */
+  .guide-card{ margin:18px 22px 0; background:#fff; border:3px solid var(--plum); border-radius:20px; overflow:hidden;}
+  .guide-toggle{ width:100%; text-align:left; background:var(--yellow); border:none; padding:10px 18px; font-size:15px; font-family:'Gaegu',sans-serif; cursor:pointer; display:flex; align-items:center; justify-content:space-between; color:var(--plum);}
+  .guide-body{ padding:14px 18px 18px; display:flex; gap:12px; flex-wrap:wrap;}
+  .guide-step{ flex:1; min-width:150px; background:#FBF8FF; border:2px solid var(--line); border-radius:14px; padding:10px 12px; font-size:12.5px; line-height:1.5;}
+  .guide-step b{ display:block; font-family:'Gaegu',sans-serif; font-size:14.5px; margin-bottom:3px; color:var(--coral-dark);}
+
+  /* ---------- 채점 결과 배너 ---------- */
+  .verdict-banner{ margin:14px 22px 0; border-radius:18px; padding:12px 18px; font-size:16px; font-family:'Gaegu',sans-serif; text-align:center; border:3px solid var(--plum); }
+  .verdict-banner.success{ background:#E7F7EE; color:#2F7A52; }
+  .verdict-banner.fail{ background:#FDECEC; color:#B0473F; }
+
+  /* ---------- 분류 화면 ---------- */
+  #screen-sort{ padding-bottom:30px; }
+  .sort-instruction{ margin:18px 22px 4px; background:var(--panel); border:3px solid var(--plum); border-radius:22px; padding:16px 20px; font-size:15px; line-height:1.6;}
+  .sort-instruction b{ color:var(--coral-dark); }
+  .group-row{ display:flex; gap:16px; margin:14px 22px; flex-wrap:wrap; }
+  .group-box{
+    flex:1; min-width:220px; min-height:190px; background:#fff; border:3px solid var(--plum); border-radius:22px;
+    padding:12px; position:relative;
+  }
+  .group-box.hover-ok{ background:#FFF6EA; border-color:var(--coral);}
+  .group-name{ font-size:16px; font-family:'Gaegu',sans-serif; text-align:center; margin-bottom:8px;}
+  .group-inner{ display:flex; flex-wrap:wrap; gap:8px; min-height:120px; align-content:flex-start;}
+  .group-empty-hint{ font-size:12px; color:var(--plum-soft); text-align:center; width:100%; margin-top:36px;}
+
+  .sort-tray{ margin:14px 22px; background:var(--panel); border:3px solid var(--plum); border-radius:22px; padding:14px 16px;}
+  .check-row{ display:flex; justify-content:center; margin:18px 0 6px;}
+
+  .verdict-mark{ font-size:14px; margin-left:2px; }
+  .chip.correct{ border-color:var(--ok); }
+  .chip.wrong{ border-color:var(--bad); }
+
+  .reveal-panel{ margin:18px 22px; display:flex; flex-direction:column; gap:14px; }
+  .def-card{
+    background:#fff; border:3px solid var(--plum); border-radius:22px; padding:16px 20px;
+    display:flex; gap:14px; align-items:flex-start;
+    box-shadow: 4px 4px 0 rgba(74,63,85,0.12);
+  }
+  .def-tag{
+    flex:0 0 auto; font-family:'Gaegu',sans-serif; font-size:17px; color:#fff;
+    border-radius:14px; padding:8px 14px; text-align:center; min-width:64px;
+  }
+  .def-tag.cond{ background:var(--coral); }
+  .def-tag.insul{ background:var(--sky); color:var(--plum); }
+  .def-tag.semi{ background:var(--lav); color:var(--plum); }
+  .def-text b{ display:block; margin-bottom:2px; }
+  .def-text{ font-size:14.5px; line-height:1.6; }
+
+  /* ---------- 활용 화면 ---------- */
+  #screen-apply{ padding:22px; align-items:center; }
+  .apply-title{ text-align:center; font-size:28px; margin-bottom:6px;}
+  .apply-sub{ text-align:center; color:var(--plum-soft); margin-bottom:26px; font-size:14.5px;}
+  .apply-grid{ display:flex; gap:20px; flex-wrap:wrap; justify-content:center; max-width:980px; margin:0 auto;}
+  .apply-card{
+    width:280px; background:#fff; border:3px solid var(--plum); border-radius:24px; padding:18px;
+    box-shadow: 5px 5px 0 rgba(74,63,85,0.15);
+  }
+  .apply-card .icon-area{ height:110px; display:flex; align-items:center; justify-content:center; margin-bottom:10px;}
+  .apply-card h3{ font-size:19px; margin:0 0 6px; text-align:center;}
+  .apply-card p{ font-size:13.5px; line-height:1.6; margin:0; text-align:center; color:var(--plum-soft);}
+  .apply-footer{ text-align:center; margin-top:30px;}
+
+  @media (max-width:700px){
+    .workbench-zone{ height:520px; }
+    .group-row{ flex-direction:column; }
+    .intro-question{ font-size:26px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ============ 화면 1: 인트로 ============ -->
+<section id="screen-intro" class="screen active">
+  <div class="blob" style="width:180px;height:180px;background:var(--mint);top:8%;left:6%;"></div>
+  <div class="blob" style="width:140px;height:140px;background:var(--yellow);bottom:10%;right:8%;"></div>
+  <div class="blob" style="width:90px;height:90px;background:var(--lav);bottom:20%;left:12%;"></div>
+  <div class="intro-card">
+    <span class="intro-eyebrow">7단원 · 전기와 자기</span>
+    <svg class="bulb-deco" viewBox="0 0 120 130">
+      <circle cx="60" cy="50" r="42" fill="#FFF3B0" stroke="#4A3F55" stroke-width="4"/>
+      <path d="M60 50 L45 35 M60 50 L75 35 M60 50 L60 68" stroke="#F0724F" stroke-width="3" fill="none" stroke-linecap="round"/>
+      <rect x="45" y="88" width="30" height="20" rx="4" fill="#bbb" stroke="#4A3F55" stroke-width="3.5"/>
+      <line x1="45" y1="96" x2="75" y2="96" stroke="#4A3F55" stroke-width="2"/>
+      <line x1="45" y1="103" x2="75" y2="103" stroke="#4A3F55" stroke-width="2"/>
+    </svg>
+    <h1 class="intro-question">물질의 종류가 다르면<br><span class="hl">저항</span>도 다를까?</h1>
+    <p class="intro-sub">전원장치, 전구, 전류계가 연결된 회로에 여러 가지 물질을 하나씩 연결해서<br>전류가 얼마나 잘 흐르는지 직접 관찰해 보자.</p>
+    <button class="btn-primary" onclick="goToLab()">실험 시작하기 🔬</button>
+  </div>
+</section>
+
+<!-- ============ 화면 2: 실험(회로) ============ -->
+<section id="screen-lab" class="screen">
+  <div class="mission-bar">
+    <span class="mission-badge">탐구질문</span>
+    <div class="mission-q">물질의 종류가 다르면 저항도 다를까?</div>
+    <div class="progress-wrap">
+      <span id="progressText">0 / 11 물질 테스트</span>
+      <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    </div>
+  </div>
+
+  <div class="lab-wrap">
+    <div class="guide-card" id="guideCard">
+      <button class="guide-toggle" type="button" onclick="toggleGuide()"><span>📘 연결 예시 보기 (실험 방법 3단계)</span><span id="guideArrow">▾</span></button>
+      <div class="guide-body" id="guideBody">
+        <div class="guide-step"><b>① 스위치 켜기</b>회로 위쪽의 스위치를 눌러 켜야 전류가 흐를 수 있어요.</div>
+        <div class="guide-step"><b>② 물질 연결하기</b>아래 트레이의 물질을 손가락으로 끌어서 회로의 연결부(점선 칸)로 가져가요. 집게 없이 바로 연결돼요.</div>
+        <div class="guide-step"><b>③ 관찰하기</b>전구 밝기와 전류계 숫자가 어떻게 달라지는지 살펴보고 다음 물질을 시험해 보세요.</div>
+      </div>
+    </div>
+
+    <div class="workbench-zone" id="workbench">
+      <svg class="wire-layer" id="wireLayer"></svg>
+
+      <div class="comp" id="comp-ps" style="left:20px; top:22px;">
+        <div class="comp-inner">
+          <div class="ps-box"><div class="ps-dial d1"></div><div class="ps-dial d2"></div><div class="ps-switch"></div></div>
+          <span class="comp-label">전원장치</span>
+        </div>
+      </div>
+
+      <div class="comp" id="comp-switch" style="left:150px; top:26px;">
+        <div class="comp-inner">
+          <div class="switch-box">
+            <div class="switch-track" id="switchTrack"><div class="switch-knob"></div></div>
+            <span class="switch-state" id="switchState">OFF</span>
+          </div>
+          <span class="comp-label">스위치</span>
+        </div>
+      </div>
+
+      <div class="comp" id="comp-bulb" style="left:262px; top:14px;">
+        <div class="comp-inner">
+          <div class="bulb-comp">
+            <div class="bulb-glass" id="bulbGlass"><div class="filament">💡</div></div>
+            <div class="bulb-base"></div>
+          </div>
+          <span class="comp-label">전구</span>
+        </div>
+      </div>
+
+      <div class="comp" id="comp-slot" style="left:150px; top:230px;">
+        <div class="comp-inner">
+          <div class="drop-gap" id="dropGap">여기로 물질을<br>가져와 연결해요</div>
+          <span class="comp-label">연결부</span>
+        </div>
+      </div>
+
+      <div class="comp" id="comp-amm" style="left:400px; top:250px;">
+        <div class="comp-inner">
+          <div class="amm-box">
+            <div class="amm-screen" id="ammScreen">0</div>
+            <div class="amm-unit">mA · 전류계</div>
+          </div>
+          <span class="comp-label">전류계</span>
+        </div>
+      </div>
+
+      <div class="workbench-hint">✋ 부품을 손가락으로 자유롭게 움직여 회로를 정리할 수 있어요</div>
+    </div>
+
+    <div class="tray-panel">
+      <p class="tray-title">🧪 시험할 물질 (아래에서 하나씩 꺼내 연결부로 가져가 보세요)</p>
+      <div class="tray-strip" id="trayStrip"></div>
+    </div>
+
+    <div class="log-panel">
+      <p class="log-title">📒 관찰 기록</p>
+      <div class="log-list" id="logList"><span class="log-empty">아직 테스트한 물질이 없어요.</span></div>
+    </div>
+
+    <div class="lab-footer">
+      <span class="lab-footer-note" id="footerNote">물질을 3가지 이상 실험하면 정리하러 갈 수 있어요.</span>
+      <button class="btn-primary hidden" id="toSortBtn" onclick="goToSort()">지금까지 실험한 것만으로 정리하러 가기 →</button>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 화면 3: 분류하기 ============ -->
+<section id="screen-sort" class="screen">
+  <div class="mission-bar">
+    <span class="mission-badge">정리하기</span>
+    <div class="mission-q">전류 세기를 기준으로 물질을 3무리로 나눠보자</div>
+  </div>
+
+  <div class="sort-instruction">
+    관찰 기록을 보면서, <b>전류가 세게 흐른 물질끼리, 거의 흐르지 않은 물질끼리, 아주 조금만 흐른 물질끼리</b> 무리를 지어 아래 상자 세 개에 옮겨보자. 정답 이름은 몰라도 괜찮아요, 전류 값만 보고 비슷한 것끼리 모으면 돼요!
+  </div>
+
+  <div class="sort-tray" id="sortTrayPanel">
+    <p class="tray-title">전체 물질 (전류 값 표시됨)</p>
+    <div class="tray-strip" id="sortTrayStrip"></div>
+  </div>
+
+  <div class="group-row">
+    <div class="group-box" id="group-0" data-group="0">
+      <p class="group-name">무리 1</p>
+      <div class="group-inner" id="groupInner-0"><span class="group-empty-hint">여기로 물질을 옮겨보세요</span></div>
+    </div>
+    <div class="group-box" id="group-1" data-group="1">
+      <p class="group-name">무리 2</p>
+      <div class="group-inner" id="groupInner-1"><span class="group-empty-hint">여기로 물질을 옮겨보세요</span></div>
+    </div>
+    <div class="group-box" id="group-2" data-group="2">
+      <p class="group-name">무리 3</p>
+      <div class="group-inner" id="groupInner-2"><span class="group-empty-hint">여기로 물질을 옮겨보세요</span></div>
+    </div>
+  </div>
+
+  <div class="check-row">
+    <button class="btn-primary" onclick="checkSort()">확인하기 ✔</button>
+  </div>
+
+  <div class="reveal-panel hidden" id="revealPanel">
+    <div class="def-card">
+      <div class="def-tag cond">도체</div>
+      <div class="def-text"><b>저항이 작아 전류가 잘 흐르는 물질</b>금속처럼 전류가 잘 통하는 물질이에요. 오늘 실험에서는 은, 구리, 철, 흑연이 여기에 속했어요.</div>
+    </div>
+    <div class="def-card">
+      <div class="def-tag insul">부도체</div>
+      <div class="def-text"><b>저항이 커서 전류가 잘 흐르지 않는 물질</b>절연체라고도 불러요. 나무, 유리, 고무, 플라스틱, 고무 지우개가 여기에 속했어요.</div>
+    </div>
+    <div class="def-card">
+      <div class="def-tag semi">반도체</div>
+      <div class="def-text"><b>도체와 부도체의 중간 성질을 가진 물질</b>규소나 저마늄처럼 순수할 땐 저항이 크지만, 불순물을 넣으면 전류 흐름을 조절할 수 있어요. 스마트 기기 부품에 많이 쓰여요.</div>
+    </div>
+    <div class="lab-footer">
+      <button class="btn-primary" onclick="goToApply()">생활 속 활용 보러가기 →</button>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 화면 4: 활용 ============ -->
+<section id="screen-apply" class="screen">
+  <h2 class="apply-title">일상생활 속 도체 · 부도체 · 반도체</h2>
+  <p class="apply-sub">우리 주변 물건들은 저항이 다른 물질을 상황에 맞게 조합해서 만들어요.</p>
+  <div class="apply-grid">
+    <div class="apply-card">
+      <div class="icon-area">
+        <svg viewBox="0 0 120 100" width="140">
+          <circle cx="30" cy="50" r="20" fill="#E0A458" stroke="#4A3F55" stroke-width="3"/>
+          <circle cx="55" cy="50" r="20" fill="#3C7BC9" stroke="#4A3F55" stroke-width="3"/>
+          <circle cx="80" cy="50" r="20" fill="#D9542E" stroke="#4A3F55" stroke-width="3"/>
+          <text x="30" y="55" font-size="9" text-anchor="middle" fill="#fff">Cu</text>
+        </svg>
+      </div>
+      <h3>도체 · 전선의 안쪽</h3>
+      <p>전선 안쪽은 구리 같은 금속 도체로 만들어 전류가 잘 흐르게 해요.</p>
+    </div>
+    <div class="apply-card">
+      <div class="icon-area">
+        <svg viewBox="0 0 120 100" width="140">
+          <rect x="20" y="30" width="80" height="40" rx="18" fill="#3C3550" stroke="#4A3F55" stroke-width="3"/>
+          <circle cx="45" cy="50" r="14" fill="#D9542E"/>
+          <circle cx="75" cy="50" r="14" fill="#3C7BC9"/>
+        </svg>
+      </div>
+      <h3>부도체 · 전선의 겉면</h3>
+      <p>전선 바깥은 고무 등 부도체로 감싸 전류가 새지 않게 하고 감전을 예방해요.</p>
+    </div>
+    <div class="apply-card">
+      <div class="icon-area">
+        <svg viewBox="0 0 120 100" width="140">
+          <rect x="30" y="18" width="60" height="64" rx="8" fill="#2B2438" stroke="#4A3F55" stroke-width="3"/>
+          <rect x="42" y="32" width="36" height="36" rx="3" fill="#7FCBAE" stroke="#4A3F55" stroke-width="2"/>
+          <line x1="30" y1="30" x2="18" y2="30" stroke="#4A3F55" stroke-width="2.5"/>
+          <line x1="30" y1="50" x2="18" y2="50" stroke="#4A3F55" stroke-width="2.5"/>
+          <line x1="30" y1="70" x2="18" y2="70" stroke="#4A3F55" stroke-width="2.5"/>
+          <line x1="90" y1="30" x2="102" y2="30" stroke="#4A3F55" stroke-width="2.5"/>
+          <line x1="90" y1="50" x2="102" y2="50" stroke="#4A3F55" stroke-width="2.5"/>
+          <line x1="90" y1="70" x2="102" y2="70" stroke="#4A3F55" stroke-width="2.5"/>
+        </svg>
+      </div>
+      <h3>반도체 · 스마트 기기 속</h3>
+      <p>스마트 기기 속 반도체 부품은 전기 신호를 조절하고 정보를 처리해요.</p>
+    </div>
+  </div>
+  <div class="apply-footer">
+    <button class="btn-secondary" onclick="restartAll()">처음으로 돌아가기</button>
+  </div>
+</section>
+
+<script>
+/* ================= 데이터 ================= */
+const materials = [
+  {id:'graphite', name:'흑연 (연필심)', category:'도체', current:400, icon:'graphite'},
+  {id:'iron', name:'철 클립', category:'도체', current:800, icon:'iron'},
+  {id:'silver', name:'은', category:'도체', current:960, icon:'silver'},
+  {id:'copper', name:'구리', category:'도체', current:900, icon:'copper'},
+  {id:'wood', name:'나무', category:'부도체', current:0, icon:'wood'},
+  {id:'glass', name:'유리', category:'부도체', current:0, icon:'glass'},
+  {id:'rubber', name:'고무', category:'부도체', current:0, icon:'rubber'},
+  {id:'plastic', name:'플라스틱', category:'부도체', current:0, icon:'plastic'},
+  {id:'eraser', name:'고무 지우개', category:'부도체', current:0, icon:'eraser'},
+  {id:'silicon', name:'규소', category:'반도체', current:35, icon:'silicon'},
+  {id:'germanium', name:'저마늄', category:'반도체', current:45, icon:'germanium'},
+];
+
+const icons = {
+  graphite: `<svg viewBox="0 0 52 52"><rect x="10" y="20" width="26" height="12" rx="2" fill="#E8C88A" stroke="#4A3F55" stroke-width="2.5"/><path d="M36 20 L46 26 L36 32 Z" fill="#3A3540" stroke="#4A3F55" stroke-width="2.5" stroke-linejoin="round"/></svg>`,
+  iron: `<svg viewBox="0 0 52 52"><path d="M18 10 C10 10 8 18 8 24 L8 34 C8 40 14 42 18 38 L18 20" fill="none" stroke="#9AA0A6" stroke-width="5" stroke-linecap="round"/><path d="M18 14 C24 14 26 18 26 22 L26 30" fill="none" stroke="#9AA0A6" stroke-width="5" stroke-linecap="round"/><path d="M18 10 C10 10 8 18 8 24 L8 34 C8 40 14 42 18 38 L18 20" fill="none" stroke="#4A3F55" stroke-width="1.5" stroke-linecap="round"/></svg>`,
+  silver: `<svg viewBox="0 0 52 52"><ellipse cx="26" cy="30" rx="20" ry="12" fill="#D9DEE3" stroke="#4A3F55" stroke-width="2.5"/><path d="M12 26 Q26 16 40 26" stroke="#fff" stroke-width="3" fill="none" opacity="0.8"/></svg>`,
+  copper: `<svg viewBox="0 0 52 52"><path d="M10 14 Q26 6 42 14 Q26 22 10 14" fill="none" stroke="#D9824A" stroke-width="5"/><path d="M10 26 Q26 18 42 26 Q26 34 10 26" fill="none" stroke="#C9713C" stroke-width="5"/><path d="M10 38 Q26 30 42 38" fill="none" stroke="#D9824A" stroke-width="5"/></svg>`,
+  wood: `<svg viewBox="0 0 52 52"><rect x="8" y="16" width="36" height="20" rx="4" fill="#C08A54" stroke="#4A3F55" stroke-width="2.5"/><ellipse cx="26" cy="26" rx="14" ry="8" fill="none" stroke="#8A5F35" stroke-width="1.5"/><ellipse cx="26" cy="26" rx="8" ry="4.5" fill="none" stroke="#8A5F35" stroke-width="1.5"/></svg>`,
+  glass: `<svg viewBox="0 0 52 52"><rect x="20" y="8" width="12" height="36" rx="6" fill="#CDE7F0" stroke="#4A3F55" stroke-width="2.5" opacity="0.85"/><rect x="23" y="12" width="3" height="16" rx="1.5" fill="#fff" opacity="0.9"/></svg>`,
+  rubber: `<svg viewBox="0 0 52 52"><circle cx="26" cy="26" r="16" fill="none" stroke="#2E2A33" stroke-width="7"/></svg>`,
+  plastic: `<svg viewBox="0 0 52 52"><rect x="10" y="14" width="32" height="24" rx="6" fill="#5FC7C0" stroke="#4A3F55" stroke-width="2.5"/><circle cx="18" cy="22" r="3" fill="#fff"/><circle cx="30" cy="22" r="3" fill="#fff"/></svg>`,
+  eraser: `<svg viewBox="0 0 52 52"><rect x="10" y="16" width="32" height="20" rx="5" fill="#F0A8C0" stroke="#4A3F55" stroke-width="2.5"/><rect x="10" y="16" width="32" height="7" rx="3" fill="#F6C6D8"/></svg>`,
+  silicon: `<svg viewBox="0 0 52 52"><polygon points="26,8 42,17 42,35 26,44 10,35 10,17" fill="#8E9FE0" stroke="#4A3F55" stroke-width="2.5"/><line x1="16" y1="20" x2="36" y2="20" stroke="#4A3F55" stroke-width="1.2"/><line x1="16" y1="26" x2="36" y2="26" stroke="#4A3F55" stroke-width="1.2"/><line x1="16" y1="32" x2="36" y2="32" stroke="#4A3F55" stroke-width="1.2"/></svg>`,
+  germanium: `<svg viewBox="0 0 52 52"><polygon points="26,8 40,20 34,42 18,42 12,20" fill="#A9AFB6" stroke="#4A3F55" stroke-width="2.5"/><polygon points="26,8 34,18 22,20" fill="#C7CBD1"/></svg>`,
+};
+
+let testedSet = new Set();
+let lastCurrent = {}; // id -> current value observed
+
+/* ================= 화면 전환 ================= */
+function showScreen(id){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+function goToLab(){ showScreen('screen-lab'); requestAnimationFrame(updateWires); }
+function goToSort(){ renderSortTray(); showScreen('screen-sort'); }
+function goToApply(){ showScreen('screen-apply'); }
+function restartAll(){
+  testedSet = new Set(); lastCurrent = {};
+  document.getElementById('progressFill').style.width='0%';
+  document.getElementById('progressText').textContent='0 / 11 물질 테스트';
+  document.getElementById('logList').innerHTML='<span class="log-empty">아직 테스트한 물질이 없어요.</span>';
+  document.getElementById('toSortBtn').classList.add('hidden');
+  document.getElementById('revealPanel').classList.add('hidden');
+  document.getElementById('dropGap').className='drop-gap';
+  document.getElementById('dropGap').innerHTML='여기에 물질을<br>연결해 보세요';
+  setAmmeter(0); setBulb(0);
+  renderTray();
+  [0,1,2].forEach(g=>{
+    document.getElementById('groupInner-'+g).innerHTML = '<span class="group-empty-hint">여기로 물질을 옮겨보세요</span>';
+  });
+  showScreen('screen-intro');
+}
+
+/* ================= 트레이 렌더 ================= */
+function makeChip(mat, forSort){
+  const chip = document.createElement('div');
+  chip.className = 'chip' + (testedSet.has(mat.id) && !forSort ? ' tested':'');
+  chip.dataset.id = mat.id;
+  let tag = '';
+  if(forSort && lastCurrent[mat.id] !== undefined){
+    tag = `<span class="chip-tag">${lastCurrent[mat.id]}mA</span>`;
+  }
+  chip.innerHTML = `<div class="chip-icon-wrap">${icons[mat.icon]}</div><div class="chip-name">${mat.name}</div>${tag}`;
+  return chip;
+}
+
+function renderTray(){
+  const strip = document.getElementById('trayStrip');
+  strip.innerHTML='';
+  materials.forEach(mat=>{
+    const chip = makeChip(mat,false);
+    if(!testedSet.has(mat.id)) enableChipDrag(chip, mat, 'test');
+    strip.appendChild(chip);
+  });
+}
+
+function getPlacedIds(){
+  const placed = new Set();
+  [0,1,2].forEach(g=>{
+    document.querySelectorAll('#groupInner-'+g+' .chip').forEach(c=>placed.add(c.dataset.id));
+  });
+  return placed;
+}
+
+function renderSortTray(){
+  const strip = document.getElementById('sortTrayStrip');
+  strip.innerHTML='';
+  const placed = getPlacedIds();
+  materials.forEach(mat=>{
+    if(placed.has(mat.id)) return;
+    const chip = makeChip(mat,true);
+    enableChipDrag(chip, mat, 'sort');
+    strip.appendChild(chip);
+  });
+}
+
+/* ================= 회로 로직 ================= */
+function setBulb(current){
+  const glass = document.getElementById('bulbGlass');
+  if(current > 5){
+    glass.classList.add('lit');
+    const ratio = Math.min(current/1000, 1);
+    glass.style.boxShadow = `0 0 ${14+26*ratio}px ${8+14*ratio}px rgba(255,221,143,${0.5+0.4*ratio}), 0 0 ${30+30*ratio}px ${16+16*ratio}px rgba(255,180,90,${0.25+0.3*ratio})`;
+  } else {
+    glass.classList.remove('lit');
+    glass.style.boxShadow='none';
+  }
+}
+function setAmmeter(current){
+  document.getElementById('ammScreen').textContent = current;
+}
+
+function testMaterial(mat){
+  const gap = document.getElementById('dropGap');
+  gap.className = 'drop-gap filled';
+  gap.innerHTML = `<div style="font-size:22px;line-height:1;">${icons[mat.icon]}</div><div style="font-size:10px;margin-top:2px;">${mat.name}</div>`;
+  gap.querySelector('svg').style.width='22px';
+  gap.querySelector('svg').style.height='22px';
+
+  // 애니메이션: 0에서 목표값까지 카운트업
+  let start=0; const target=mat.current; const dur=500; const t0=performance.now();
+  function step(t){
+    const p = Math.min((t-t0)/dur,1);
+    const val = Math.round(target*p);
+    setAmmeter(val); setBulb(val);
+    if(p<1) requestAnimationFrame(step);
+  }
+  requestAnimationFrame(step);
+
+  if(!testedSet.has(mat.id)){
+    testedSet.add(mat.id);
+    lastCurrent[mat.id] = mat.current;
+    addLog(mat, mat.current);
+    updateProgress();
+    renderTray();
+  }
+}
+
+function addLog(mat, val){
+  const list = document.getElementById('logList');
+  if(list.querySelector('.log-empty')) list.innerHTML='';
+  const item = document.createElement('span');
+  item.className='log-item';
+  item.textContent = `${mat.name} → ${val} mA`;
+  list.appendChild(item);
+}
+
+function updateProgress(){
+  const n = testedSet.size;
+  document.getElementById('progressText').textContent = `${n} / 11 물질 테스트`;
+  document.getElementById('progressFill').style.width = (n/11*100)+'%';
+  if(n>=11){ document.getElementById('toSortBtn').classList.remove('hidden'); }
+}
+
+/* ================= 드래그 (물질 칩) ================= */
+function enableChipDrag(chip, mat, mode){
+  chip.addEventListener('pointerdown', (e)=>{
+    e.preventDefault();
+    const rect = chip.getBoundingClientRect();
+    const offsetX = e.clientX - rect.left;
+    const offsetY = e.clientY - rect.top;
+    const placeholder = document.createElement('div');
+    placeholder.style.width = rect.width+'px';
+    placeholder.style.flex = '0 0 auto';
+    chip.parentNode.insertBefore(placeholder, chip.nextSibling);
+
+    chip.classList.add('dragging');
+    chip.style.width = rect.width+'px';
+    chip.style.left = rect.left+'px';
+    chip.style.top = rect.top+'px';
+    document.body.appendChild(chip);
+
+    function move(ev){
+      chip.style.left = (ev.clientX-offsetX)+'px';
+      chip.style.top = (ev.clientY-offsetY)+'px';
+      highlightTargets(chip, mode);
+    }
+    function up(ev){
+      document.removeEventListener('pointermove', move);
+      document.removeEventListener('pointerup', up);
+      const dropped = tryDrop(chip, mat, mode);
+      clearHighlights();
+      placeholder.remove();
+      // 드래그용으로 body에 옮겨졌던 임시 요소는 항상 제거하고,
+      // 최신 상태를 각 렌더 함수가 다시 그려준다.
+      chip.remove();
+      if(!dropped){
+        if(mode==='test') renderTray(); else renderSortTray();
+      }
+    }
+    document.addEventListener('pointermove', move);
+    document.addEventListener('pointerup', up);
+  });
+}
+
+function rectsOverlap(a,b){
+  return !(a.right<b.left || a.left>b.right || a.bottom<b.top || a.top>b.bottom);
+}
+
+function highlightTargets(chip, mode){
+  clearHighlights();
+  const r = chip.getBoundingClientRect();
+  if(mode==='test'){
+    const gap = document.getElementById('dropGap');
+    if(rectsOverlap(r, gap.getBoundingClientRect())) gap.classList.add('hover-ok');
+  } else {
+    [0,1,2].forEach(g=>{
+      const box = document.getElementById('group-'+g);
+      if(rectsOverlap(r, box.getBoundingClientRect())) box.classList.add('hover-ok');
+    });
+  }
+}
+function clearHighlights(){
+  document.getElementById('dropGap').classList.remove('hover-ok');
+  [0,1,2].forEach(g=>document.getElementById('group-'+g).classList.remove('hover-ok'));
+}
+
+function tryDrop(chip, mat, mode){
+  const r = chip.getBoundingClientRect();
+  if(mode==='test'){
+    const gap = document.getElementById('dropGap');
+    if(rectsOverlap(r, gap.getBoundingClientRect())){
+      testMaterial(mat);
+      return true;
+    }
+    return false;
+  } else {
+    for(const g of [0,1,2]){
+      const box = document.getElementById('group-'+g);
+      if(rectsOverlap(r, box.getBoundingClientRect())){
+        placeInGroup(mat, g);
+        return true;
+      }
+    }
+    return false;
+  }
+}
+
+function placeInGroup(mat, g){
+  // 다른 그룹에 이미 있으면 제거
+  [0,1,2].forEach(gi=>{
+    const inner = document.getElementById('groupInner-'+gi);
+    const existing = inner.querySelector(`[data-id="${mat.id}"]`);
+    if(existing) existing.remove();
+  });
+  const inner = document.getElementById('groupInner-'+g);
+  const hint = inner.querySelector('.group-empty-hint');
+  if(hint) hint.remove();
+  const chip = makeChip(mat, true);
+  enableChipDrag(chip, mat, 'sort');
+  inner.appendChild(chip);
+  // 트레이에서 제거(이미 옮겨졌으므로)
+  renderSortTrayRemoving(mat.id);
+}
+
+function renderSortTrayRemoving(id){
+  const strip = document.getElementById('sortTrayStrip');
+  const el = strip.querySelector(`[data-id="${id}"]`);
+  if(el) el.remove();
+}
+
+/* ================= 채점 ================= */
+function checkSort(){
+  let anyPlaced=false;
+  [0,1,2].forEach(g=>{
+    const inner = document.getElementById('groupInner-'+g);
+    const chips = Array.from(inner.querySelectorAll('.chip'));
+    if(chips.length===0) return;
+    anyPlaced=true;
+    // 이 그룹 안에서 가장 많은 category를 다수 카테고리로 판단
+    const counts = {};
+    chips.forEach(c=>{
+      const mat = materials.find(m=>m.id===c.dataset.id);
+      counts[mat.category] = (counts[mat.category]||0)+1;
+    });
+    const majority = Object.keys(counts).sort((a,b)=>counts[b]-counts[a])[0];
+    chips.forEach(c=>{
+      const mat = materials.find(m=>m.id===c.dataset.id);
+      c.classList.remove('correct','wrong');
+      if(mat.category===majority){ c.classList.add('correct'); }
+      else{ c.classList.add('wrong'); }
+    });
+  });
+  if(!anyPlaced){
+    alert('먼저 물질들을 세 무리 중 한 곳으로 옮겨주세요!');
+    return;
+  }
+  document.getElementById('revealPanel').classList.remove('hidden');
+  document.getElementById('revealPanel').scrollIntoView({behavior:'smooth', block:'start'});
+}
+
+/* ================= 도선(와이어) 그리기 ================= */
+const wireOrder = ['comp-ps','comp-bulb','comp-slot','comp-amm'];
+function anchorPoint(el, workRect){
+  const r = el.getBoundingClientRect();
+  return { x: r.left + r.width/2 - workRect.left, y: r.top + r.height/2 - workRect.top };
+}
+function updateWires(){
+  const workbench = document.getElementById('workbench');
+  const layer = document.getElementById('wireLayer');
+  const workRect = workbench.getBoundingClientRect();
+  const pts = wireOrder.map(id=> anchorPoint(document.getElementById(id), workRect));
+  let path = '';
+  for(let i=0;i<pts.length;i++){
+    const a = pts[i], b = pts[(i+1)%pts.length];
+    path += `M ${a.x} ${a.y} L ${b.x} ${b.y} `;
+  }
+  layer.innerHTML = `<path d="${path}" stroke="var(--wire)" stroke-width="5" fill="none" stroke-linecap="round" opacity="0.9"/>` +
+    pts.map(p=>`<circle cx="${p.x}" cy="${p.y}" r="6" fill="#fff" stroke="var(--wire)" stroke-width="3"/>`).join('');
+}
+
+/* ================= 회로부품 드래그 ================= */
+function enableComponentDrag(el){
+  el.addEventListener('pointerdown', (e)=>{
+    e.preventDefault();
+    el.setPointerCapture(e.pointerId);
+    const workbench = document.getElementById('workbench');
+    const workRect = workbench.getBoundingClientRect();
+    const startRect = el.getBoundingClientRect();
+    const offsetX = e.clientX - startRect.left;
+    const offsetY = e.clientY - startRect.top;
+
+    function move(ev){
+      let nx = ev.clientX - workRect.left - offsetX;
+      let ny = ev.clientY - workRect.top - offsetY;
+      nx = Math.max(0, Math.min(nx, workRect.width - startRect.width));
+      ny = Math.max(0, Math.min(ny, workRect.height - startRect.height));
+      el.style.left = nx+'px';
+      el.style.top = ny+'px';
+      updateWires();
+    }
+    function up(ev){
+      el.releasePointerCapture(ev.pointerId);
+      el.removeEventListener('pointermove', move);
+      el.removeEventListener('pointerup', up);
+    }
+    el.addEventListener('pointermove', move);
+    el.addEventListener('pointerup', up);
+  });
+}
+
+document.querySelectorAll('.comp').forEach(enableComponentDrag);
+window.addEventListener('resize', updateWires);
+
+/* ================= 초기화 ================= */
+renderTray();
+requestAnimationFrame(updateWires);
+</script>
+</body>
+</html>
