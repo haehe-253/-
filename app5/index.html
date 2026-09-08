@@ -1,0 +1,1128 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>저항의 직렬 및 병렬 연결 가상 실험실</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Cute Rounded Font (Jua / Noto Sans KR) -->
+    <link href="https://fonts.googleapis.com/css2?family=Jua&family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+    <!-- FontAwesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { 
+            font-family: 'Noto Sans KR', sans-serif; 
+        }
+        .cute-font {
+            font-family: 'Jua', sans-serif;
+        }
+        /* Bright and glowing bulb effects */
+        .bulb-glow-intense {
+            filter: drop-shadow(0 0 30px rgba(253, 224, 71, 0.9)) drop-shadow(0 0 60px rgba(234, 179, 8, 0.7));
+            transition: all 0.3s ease-in-out;
+        }
+        @keyframes revealIn {
+            from { opacity: 0; transform: translateY(-6px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .reveal-enter { animation: revealIn 0.35s ease; }
+        .flip-btn i { transition: transform 0.3s ease; }
+        @keyframes bob {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-5px); }
+        }
+        .tray-bulb { animation: bob 1.6s ease-in-out infinite; transform-origin: center; }
+        @keyframes smokeRise {
+            0% { opacity: 0.55; transform: translateY(0) scale(1); }
+            100% { opacity: 0; transform: translateY(-32px) scale(1.7); }
+        }
+        .smoke-puff { animation: smokeRise 2.1s ease-out infinite; transform-origin: center; }
+        @keyframes flameFlicker {
+            0%, 100% { transform: scale(1, 1) rotate(-3deg); }
+            25% { transform: scale(1.16, 0.84) rotate(6deg); }
+            50% { transform: scale(0.86, 1.2) rotate(-7deg); }
+            75% { transform: scale(1.1, 0.9) rotate(4deg); }
+        }
+        .flame-flicker { animation: flameFlicker 0.38s ease-in-out infinite; }
+        @keyframes flameFlickerFast {
+            0%, 100% { transform: scale(1, 1) rotate(-8deg); }
+            50% { transform: scale(1.2, 0.82) rotate(10deg); }
+        }
+        .flame-flicker-fast { animation: flameFlickerFast 0.28s ease-in-out infinite; }
+        @keyframes flameFlickerSlow {
+            0%, 100% { transform: scale(1, 1) rotate(7deg); }
+            50% { transform: scale(0.85, 1.18) rotate(-9deg); }
+        }
+        .flame-flicker-slow { animation: flameFlickerSlow 0.46s ease-in-out infinite; }
+        @keyframes glowPulse {
+            0%, 100% { opacity: 0.32; }
+            50% { opacity: 0.65; }
+        }
+        .glow-pulse { animation: glowPulse 0.5s ease-in-out infinite; }
+        @keyframes sparkRiseAnim {
+            0% { opacity: 1; transform: translateY(0) scale(1); }
+            100% { opacity: 0; transform: translateY(-42px) scale(0.3); }
+        }
+        .spark-rise { animation: sparkRiseAnim 1s ease-out infinite; transform-origin: center; }
+        @keyframes bannerPop {
+            0% { transform: translate(-50%, -14px) scale(0.75); opacity: 0; }
+            55% { transform: translate(-50%, 3px) scale(1.06); opacity: 1; }
+            100% { transform: translate(-50%, 0) scale(1); opacity: 1; }
+        }
+        @keyframes bannerShake {
+            0%, 100% { margin-left: 0; }
+            20% { margin-left: -4px; }
+            40% { margin-left: 4px; }
+            60% { margin-left: -3px; }
+            80% { margin-left: 3px; }
+        }
+        #fire-warning-banner.show { animation: bannerPop 0.35s ease-out, bannerShake 0.5s ease-in-out 0.35s 3; }
+        #circuit-svg { touch-action: none; }
+        #circuit-svg [data-tray-bulb] { touch-action: none; }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-amber-50 via-sky-50 to-indigo-50 text-slate-800 min-h-screen flex flex-col">
+
+    <!-- Header -->
+    <header class="bg-white/95 backdrop-blur border-b border-amber-200 py-4 px-6 shadow-md sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
+            <div>
+                <h1 class="text-3xl cute-font text-amber-600 flex items-center gap-3 drop-shadow-sm">
+                    <i class="fa-solid fa-lightbulb text-amber-500"></i> 저항의 직렬 및 병렬 연결 가상 실험실
+                </h1>
+                <p class="text-sm text-slate-600 font-medium">전구를 드래그해서 회로를 직접 연결해보고, 밝기·단선·과전압 실험과 퀴즈까지 풀어봐요!</p>
+            </div>
+            <!-- Mode selection tabs -->
+            <div class="flex bg-slate-100 p-1.5 rounded-2xl border border-slate-200 shadow-inner">
+                <button onclick="setMode('single')" id="tab-single" class="px-4 py-2 rounded-xl cute-font text-base transition-all bg-amber-500 text-white shadow-md">
+                    기본 회로 (과정 1)
+                </button>
+                <button onclick="setMode('series')" id="tab-series" class="px-4 py-2 rounded-xl cute-font text-base transition-all text-slate-700 hover:text-slate-900">
+                    직렬 연결 (가)
+                </button>
+                <button onclick="setMode('parallel')" id="tab-parallel" class="px-4 py-2 rounded-xl cute-font text-base transition-all text-slate-700 hover:text-slate-900">
+                    병렬 연결 (나)
+                </button>
+                <button onclick="setMode('quiz')" id="tab-quiz" class="px-4 py-2 rounded-xl cute-font text-base transition-all text-indigo-700 hover:bg-indigo-50">
+                    <i class="fa-solid fa-circle-question"></i> 확인 퀴즈
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-1 max-w-7xl w-full mx-auto p-4 md:p-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
+        
+        <!-- Left & Center: Canvas / Visual Circuit Simulation (2 cols) -->
+        <div id="simulation-view" class="lg:col-span-2 flex flex-col gap-4">
+            <div class="bg-white border border-amber-200 rounded-3xl p-6 shadow-xl flex flex-col items-center justify-between relative min-h-[640px] overflow-hidden">
+                
+                <!-- Circuit Info Badge -->
+                <div class="absolute top-4 left-4 z-10 flex items-center gap-2">
+                    <span class="bg-amber-50 border border-amber-200 px-3.5 py-1.5 rounded-xl text-xs cute-font text-amber-700 shadow-sm">
+                        <i class="fa-solid fa-bolt text-amber-500"></i> <span id="badge-mode-text">모드: 기본 회로 (전구 1개)</span>
+                    </span>
+                </div>
+                <div class="absolute top-4 right-4 z-10 flex items-center gap-2">
+                    <span class="bg-rose-50 border border-rose-200 px-3.5 py-1.5 rounded-xl text-xs cute-font text-rose-600 shadow-sm">
+                        <i class="fa-solid fa-fire text-rose-500"></i> 전압이 9V를 넘으면 전구가 타버려요!
+                    </span>
+                </div>
+
+                <!-- Fire danger warning banner (shown briefly while a bulb is actively burning) -->
+                <div id="fire-warning-banner" class="hidden absolute top-16 left-1/2 -translate-x-1/2 z-30 bg-gradient-to-r from-rose-600 to-orange-600 text-white px-5 py-3 rounded-2xl shadow-2xl cute-font text-sm md:text-base flex items-center gap-2 border-2 border-yellow-300 whitespace-nowrap">
+                    <i class="fa-solid fa-fire text-yellow-200 text-xl"></i> 위험해요! 전구에 불이 붙었어요! 전압을 꼭 낮춰주세요!
+                </div>
+
+                <!-- SVG Circuit Diagram Container -->
+                <div class="w-full my-auto flex justify-center items-center py-4">
+                    <svg id="circuit-svg" viewBox="0 0 700 570" class="w-full max-w-2xl h-auto drop-shadow-sm" style="touch-action:none;">
+                        <!-- Circuit Wires & Components rendered dynamically via JS -->
+                    </svg>
+                </div>
+
+                <!-- Interactive Controls Bar inside Canvas Card -->
+                <div class="w-full flex flex-wrap items-center justify-between gap-3 pt-4 border-t border-slate-200">
+                    <div class="flex flex-wrap items-center gap-2">
+                        <!-- Power supply control chip (mirrors the physical DC power supply's own screen) -->
+                        <div class="flex items-center gap-1.5 bg-slate-900 text-white px-3 py-2 rounded-2xl shadow-md">
+                            <span class="text-[10px] cute-font text-amber-300 mr-1">전원장치</span>
+                            <span id="voltage-display" class="bg-black px-2 py-1 rounded-lg text-emerald-400 font-mono text-xs font-black border border-emerald-500/50">3.0 V</span>
+                            <button onclick="adjustVoltage(-2)" class="bg-slate-700 hover:bg-slate-600 active:scale-95 text-[11px] px-2 py-1.5 rounded-lg font-bold">-2V</button>
+                            <button onclick="adjustVoltage(-0.5)" class="bg-slate-700 hover:bg-slate-600 active:scale-95 text-[11px] px-2 py-1.5 rounded-lg font-bold">-0.5V</button>
+                            <button onclick="adjustVoltage(0.5)" class="bg-slate-700 hover:bg-slate-600 active:scale-95 text-[11px] px-2 py-1.5 rounded-lg font-bold">+0.5V</button>
+                            <button onclick="adjustVoltage(2)" class="bg-slate-700 hover:bg-slate-600 active:scale-95 text-[11px] px-2 py-1.5 rounded-lg font-bold">+2V</button>
+                        </div>
+                        <button id="switch-btn" onclick="toggleSwitch()" class="flex items-center gap-2 px-4 py-2.5 rounded-2xl cute-font text-sm transition-all bg-emerald-600 hover:bg-emerald-500 text-white shadow-md active:scale-95">
+                            <i class="fa-solid fa-power-off"></i> 스위치: <span id="switch-state-text">닫힘 (ON)</span>
+                        </button>
+                        <button onclick="resetPlacement()" class="flex items-center gap-2 px-3.5 py-2.5 rounded-2xl cute-font text-xs transition-all bg-white hover:bg-slate-50 border border-slate-300 text-slate-600 shadow-sm active:scale-95">
+                            <i class="fa-solid fa-arrows-rotate"></i> 회로 다시 연결하기
+                        </button>
+                    </div>
+
+                    <!-- Disconnection toggles for bulbs -->
+                    <div id="disconnect-controls" class="flex items-center gap-2">
+                        <span class="text-xs cute-font text-slate-600">단선 실험:</span>
+                        <button id="disc-btn-1" onclick="toggleDisconnect(1)" class="px-3.5 py-2 rounded-xl text-xs cute-font bg-slate-100 hover:bg-slate-200 border border-slate-300 text-slate-700 transition-all active:scale-95 shadow-sm">
+                            전구 끊기
+                        </button>
+                        <button id="disc-btn-2" onclick="toggleDisconnect(2)" class="px-3.5 py-2 rounded-xl text-xs cute-font bg-slate-100 hover:bg-slate-200 border border-slate-300 text-slate-700 transition-all hidden active:scale-95 shadow-sm">
+                            전구 B 끊기
+                        </button>
+                    </div>
+                </div>
+                <p class="text-[11px] text-slate-400 mt-2 text-center w-full">
+                    <i class="fa-solid fa-hand-pointer"></i> 아래 <b>부품 보관함</b>의 전구를 회로의 빈 소켓으로 드래그해서 연결하고, 연결된 전구도 드래그해서 다시 뺄 수 있어요.
+                </p>
+            </div>
+
+            <!-- Observations / Textbook Q&A Card -->
+            <div class="bg-white border border-amber-200 rounded-3xl p-6 shadow-xl">
+                <h3 class="text-xl cute-font text-amber-600 mb-1 flex items-center gap-2">
+                    <i class="fa-solid fa-book-open text-amber-500"></i> 탐구 관찰 및 정리
+                </h3>
+                <p class="text-xs text-slate-500 mb-4">먼저 전구의 밝기와 단선 실험을 직접 관찰하고 예상해 본 다음, 버튼을 눌러 탐구 결과를 확인해 보세요.</p>
+                <div class="space-y-3 text-sm text-slate-700 leading-relaxed">
+                    <div class="bg-amber-50/80 rounded-2xl border border-amber-200 shadow-sm overflow-hidden">
+                        <button id="reveal-btn-brightness" onclick="toggleReveal('brightness')" class="flip-btn w-full flex items-center justify-between gap-2 p-4 text-left hover:bg-amber-100/60 transition">
+                            <span class="cute-font text-amber-700 text-base flex items-center gap-2"><i class="fa-solid fa-lightbulb"></i> Q1. 전구의 밝기 비교 결과 확인하기</span>
+                            <i class="fa-solid fa-chevron-down text-amber-600"></i>
+                        </button>
+                        <div id="reveal-content-brightness" class="hidden px-4 pb-4">
+                            <p id="obs-brightness" class="font-medium text-slate-700 bg-white/70 p-3 rounded-xl border border-amber-100">(가)에서는 전구의 밝기가 과정 1의 전구보다 어두워지고, (나)에서는 과정 1의 전구 밝기와 같습니다.</p>
+                        </div>
+                    </div>
+                    <div class="bg-emerald-50/80 rounded-2xl border border-emerald-200 shadow-sm overflow-hidden">
+                        <button id="reveal-btn-disconnect" onclick="toggleReveal('disconnect')" class="flip-btn w-full flex items-center justify-between gap-2 p-4 text-left hover:bg-emerald-100/60 transition">
+                            <span class="cute-font text-emerald-700 text-base flex items-center gap-2"><i class="fa-solid fa-plug-circle-xmark"></i> Q2. 전구 끊김(단선) 실험 결과 확인하기</span>
+                            <i class="fa-solid fa-chevron-down text-emerald-600"></i>
+                        </button>
+                        <div id="reveal-content-disconnect" class="hidden px-4 pb-4">
+                            <p id="obs-disconnect" class="font-medium text-slate-700 bg-white/70 p-3 rounded-xl border border-emerald-100">(가)에서는 전구 1개의 연결을 끊으면 나머지 전구의 불도 꺼지고, (나)에서는 전구 1개의 연결을 끊어도 나머지 전구는 불이 켜진 채로 있습니다.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quiz View (Hidden by default) -->
+        <div id="quiz-view" class="lg:col-span-2 flex flex-col gap-4 hidden">
+            <div class="bg-white border border-indigo-200 rounded-3xl p-6 shadow-xl flex flex-col gap-6">
+                <div class="flex justify-between items-center border-b border-slate-200 pb-4">
+                    <h3 class="text-2xl cute-font text-indigo-600 flex items-center gap-2">
+                        <i class="fa-solid fa-circle-question"></i> 저항의 직렬 및 병렬 연결 확인 퀴즈
+                    </h3>
+                    <div class="bg-indigo-50 border border-indigo-200 px-4 py-1.5 rounded-xl cute-font text-indigo-700 text-sm">
+                        점수: <span id="quiz-score" class="text-lg font-bold">0</span> / 3점
+                    </div>
+                </div>
+
+                <div class="space-y-6">
+                    <!-- Quiz 1: fill in the blank -->
+                    <div class="bg-slate-50 p-5 rounded-2xl border border-slate-200 shadow-sm">
+                        <h4 class="cute-font text-slate-800 text-base mb-3">문제 1. 과정 1의 전구와 비교할 때, (가)와 (나)에서 전구의 밝기는 어떻게 달라지는지 빈칸에 알맞은 말을 쓰세요.</h4>
+                        <div class="bg-white rounded-xl border border-slate-200 p-4 text-[15px] leading-loose text-slate-700">
+                            (가)에서 전구의 밝기는 과정 1의 전구보다
+                            <input type="text" id="q1-blank1" placeholder="정답" class="inline-block w-24 mx-1 px-2 py-1 border-b-2 border-amber-400 bg-amber-50 rounded text-center font-bold text-amber-700 focus:outline-none focus:border-amber-600">
+                            , (나)에서 전구의 밝기는 과정 1의 전구 밝기와
+                            <input type="text" id="q1-blank2" placeholder="정답" class="inline-block w-20 mx-1 px-2 py-1 border-b-2 border-amber-400 bg-amber-50 rounded text-center font-bold text-amber-700 focus:outline-none focus:border-amber-600">
+                            .
+                        </div>
+                        <p id="q1-feedback" class="text-xs mt-2 font-bold"></p>
+                    </div>
+
+                    <!-- Quiz 2: fill in the blank -->
+                    <div class="bg-slate-50 p-5 rounded-2xl border border-slate-200 shadow-sm">
+                        <h4 class="cute-font text-slate-800 text-base mb-3">문제 2. (가)와 (나)에서 전구 1개의 연결을 끊을 때 나머지 전구에 어떤 변화가 나타나는지 각각 관찰하여 빈칸에 알맞은 말을 쓰세요.</h4>
+                        <div class="bg-white rounded-xl border border-slate-200 p-4 text-[15px] leading-loose text-slate-700">
+                            (가)에서 전구 1개의 연결을 끊으면 나머지 전구의
+                            <input type="text" id="q2-blank1" placeholder="정답" class="inline-block w-32 mx-1 px-2 py-1 border-b-2 border-indigo-400 bg-indigo-50 rounded text-center font-bold text-indigo-700 focus:outline-none focus:border-indigo-600">
+                            . (나)에서는 전구 1개의 연결을 끊어도 나머지 전구는
+                            <input type="text" id="q2-blank2" placeholder="정답" class="inline-block w-40 mx-1 px-2 py-1 border-b-2 border-indigo-400 bg-indigo-50 rounded text-center font-bold text-indigo-700 focus:outline-none focus:border-indigo-600">
+                            .
+                        </div>
+                        <p id="q2-feedback" class="text-xs mt-2 font-bold"></p>
+                    </div>
+
+                    <!-- Quiz 3: summary fill-in-the-blank -->
+                    <div class="bg-slate-50 p-5 rounded-2xl border border-slate-200 shadow-sm">
+                        <h4 class="cute-font text-slate-800 text-base mb-3">정리해볼까? 저항의 직렬연결과 병렬연결의 특징을 비교하여 이야기해 보자.</h4>
+                        <div class="bg-white rounded-xl border border-slate-200 p-4 text-[15px] leading-loose text-slate-700">
+                            같은 전압을 걸었을 때 저항을 직렬연결하면 회로에 흐르는 전체 전류의 세기는
+                            <input type="text" id="q3-blank1" placeholder="정답" class="inline-block w-24 mx-1 px-2 py-1 border-b-2 border-indigo-400 bg-indigo-50 rounded text-center font-bold text-indigo-700 focus:outline-none focus:border-indigo-600">
+                            , 병렬연결하면 각 저항에 흐르는 전류의 세기는 저항 1개만 연결했을 때와 같지만 회로에 흐르는 전체 전류의 세기는
+                            <input type="text" id="q3-blank2" placeholder="정답" class="inline-block w-24 mx-1 px-2 py-1 border-b-2 border-indigo-400 bg-indigo-50 rounded text-center font-bold text-indigo-700 focus:outline-none focus:border-indigo-600">
+                            . 저항을 직렬연결했을 때는 회로의 일부가 끊어지면 전류가
+                            <input type="text" id="q3-blank3" placeholder="정답" class="inline-block w-28 mx-1 px-2 py-1 border-b-2 border-indigo-400 bg-indigo-50 rounded text-center font-bold text-indigo-700 focus:outline-none focus:border-indigo-600">
+                            병렬연결했을 때는 한 저항의 회로가 끊어져도 다른 저항에는 전류가
+                            <input type="text" id="q3-blank4" placeholder="정답" class="inline-block w-20 mx-1 px-2 py-1 border-b-2 border-indigo-400 bg-indigo-50 rounded text-center font-bold text-indigo-700 focus:outline-none focus:border-indigo-600">
+                            .
+                        </div>
+                        <p id="q3-feedback" class="text-xs mt-2 font-bold"></p>
+                    </div>
+                </div>
+
+                <div class="flex justify-between items-center pt-4 border-t border-slate-200">
+                    <button onclick="submitQuiz()" class="px-6 py-3 rounded-2xl cute-font bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg transition active:scale-95">
+                        <i class="fa-solid fa-check"></i> 정답 채점하기
+                    </button>
+                    <div id="quiz-feedback" class="cute-font text-base text-slate-700"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Column: Scientific Principles & Summary Notes (1 col) -->
+        <div class="flex flex-col gap-6">
+            <div class="bg-white border border-amber-200 rounded-3xl p-6 shadow-xl flex flex-col justify-between h-full">
+                <div>
+                    <h3 class="text-xl cute-font text-indigo-700 mb-4 flex items-center gap-2">
+                        <i class="fa-solid fa-graduation-cap text-sky-500"></i> 핵심 과학 원리 정리
+                    </h3>
+                    
+                    <div class="space-y-4 text-sm text-slate-700">
+                        <!-- Series Summary -->
+                        <div class="p-4 bg-sky-50/80 rounded-2xl border border-sky-200 shadow-sm">
+                            <h4 class="cute-font text-sky-700 text-base mb-1 flex items-center gap-2">
+                                <i class="fa-solid fa-link"></i> 직렬 연결 (가)의 특징
+                            </h4>
+                            <ul class="list-disc list-inside space-y-1.5 text-xs text-slate-600 font-medium">
+                                <li>전체 저항이 커져서 회로에 흐르는 <b>전체 전류의 세기가 작아집니다</b>. (전구가 어두워짐)</li>
+                                <li>전류가 흐르는 통로가 1개이므로, 중간에 끊어지면 <b>모든 전구에 전류가 흐르지 않아 꺼집니다</b>.</li>
+                                <li>전구 1개가 나누어 갖는 전압이 낮아서, 기본 회로보다 <b>과전압으로 타버릴 가능성이 낮습니다</b>.</li>
+                            </ul>
+                        </div>
+
+                        <!-- Parallel Summary -->
+                        <div class="p-4 bg-emerald-50/80 rounded-2xl border border-emerald-200 shadow-sm">
+                            <h4 class="cute-font text-emerald-700 text-base mb-1 flex items-center gap-2">
+                                <i class="fa-solid fa-bars"></i> 병렬 연결 (나)의 특징
+                            </h4>
+                            <ul class="list-disc list-inside space-y-1.5 text-xs text-slate-600 font-medium">
+                                <li>각 전구에 전원 장치의 전압이 그대로 걸려 <b>전구의 밝기가 변하지 않습니다</b>.</li>
+                                <li>한 전구가 끊어져도 <b>다른 전구는 독립적으로 불이 켜져 있습니다</b>.</li>
+                            </ul>
+                        </div>
+
+                        <!-- Interactive Formula / Live Calculator Note -->
+                        <div class="p-4 bg-slate-50 rounded-2xl border border-slate-200">
+                            <h4 class="cute-font text-amber-600 mb-2 text-sm tracking-wider">실험 실시간 측정값</h4>
+                            <div class="grid grid-cols-2 gap-3 text-xs font-mono">
+                                <div class="bg-white p-3 rounded-xl border border-slate-200 text-center shadow-sm">
+                                    <span class="text-slate-500 block text-[11px] mb-1">전체 합성 저항 ($R$)</span>
+                                    <span id="stat-resistance" class="text-sky-600 text-sm font-bold">15.0 $\Omega$</span>
+                                </div>
+                                <div class="bg-white p-3 rounded-xl border border-slate-200 text-center shadow-sm">
+                                    <span class="text-slate-500 block text-[11px] mb-1">회로 전체 전류 ($I$)</span>
+                                    <span id="stat-current" class="text-amber-600 text-sm font-bold">0.20 A</span>
+                                </div>
+                            </div>
+                            <p class="text-[11px] text-slate-500 mt-2">※ 회로도의 주황색 표시창이 전류계, 파란색 표시창이 전압계예요. 숫자가 바뀌는 걸 직접 확인해 보세요.</p>
+                            <p class="text-[11px] text-rose-500 mt-1.5 font-bold"><i class="fa-solid fa-triangle-exclamation"></i> 전구에 걸리는 전압이 약 9V 이상이 되면 정격 전압을 크게 초과해 전구가 불타버려요! 타버린 전구는 클릭하면 새 전구로 교체할 수 있어요.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Footer tip -->
+                <div class="mt-6 pt-4 border-t border-slate-200 text-center">
+                    <p class="text-xs cute-font text-amber-600">교과서 탐구 활동 • 전구를 드래그해 연결하고, 전압·연결 방식을 바꿔가며 관찰해보세요.</p>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <script>
+        // Simulation State variables
+        let currentMode = 'single'; // 'single', 'series', 'parallel', 'quiz'
+        let voltage = 3.0; // Volts
+        let switchClosed = true;
+        let bulb1Disconnected = false;
+        let bulb2Disconnected = false;
+        let bulb1Placed = false;
+        let bulb2Placed = false;
+        let bulb1BurnedOut = false;
+        let bulb2BurnedOut = false;
+        let bulb1JustBurned = false;
+        let bulb2JustBurned = false;
+        let dragActive = false;
+
+        // Bulb resistance in ohms
+        const bulbResistance = 15.0;
+        // Voltage across a bulb at/above this level burns it out
+        const BURN_VOLTAGE = 9.0;
+
+        function setMode(mode) {
+            currentMode = mode;
+            bulb1Disconnected = false;
+            bulb2Disconnected = false;
+            bulb1Placed = false;
+            bulb2Placed = false;
+            bulb1BurnedOut = false;
+            bulb2BurnedOut = false;
+            bulb1JustBurned = false;
+            bulb2JustBurned = false;
+
+            const simView = document.getElementById('simulation-view');
+            const quizView = document.getElementById('quiz-view');
+
+            // Update tab styles
+            ['single', 'series', 'parallel', 'quiz'].forEach(m => {
+                const btn = document.getElementById(`tab-${m}`);
+                if (m === mode) {
+                    if (m === 'quiz') {
+                        btn.className = 'px-4 py-2 rounded-xl cute-font text-base transition-all bg-indigo-600 text-white shadow-md';
+                    } else {
+                        btn.className = 'px-4 py-2 rounded-xl cute-font text-base transition-all bg-amber-500 text-white shadow-md';
+                    }
+                } else {
+                    if (m === 'quiz') {
+                        btn.className = 'px-4 py-2 rounded-xl cute-font text-base transition-all text-indigo-700 hover:bg-indigo-50';
+                    } else {
+                        btn.className = 'px-4 py-2 rounded-xl cute-font text-base transition-all text-slate-700 hover:text-slate-900';
+                    }
+                }
+            });
+
+            if (mode === 'quiz') {
+                simView.classList.add('hidden');
+                quizView.classList.remove('hidden');
+                return;
+            } else {
+                simView.classList.remove('hidden');
+                quizView.classList.add('hidden');
+            }
+
+            // Update badge text & disconnect controls visibility
+            const badgeText = document.getElementById('badge-mode-text');
+            const discBtn2 = document.getElementById('disc-btn-2');
+            const discBtn1 = document.getElementById('disc-btn-1');
+
+            if (mode === 'single') {
+                badgeText.innerText = '모드: 기본 회로 (전구 1개)';
+                discBtn2.classList.add('hidden');
+                discBtn1.innerText = '전구 끊기';
+            } else if (mode === 'series') {
+                badgeText.innerText = '모드: 직렬 연결 (가)';
+                discBtn2.classList.remove('hidden');
+                discBtn1.innerText = '전구 A 끊기';
+                discBtn2.innerText = '전구 B 끊기';
+            } else if (mode === 'parallel') {
+                badgeText.innerText = '모드: 병렬 연결 (나)';
+                discBtn2.classList.remove('hidden');
+                discBtn1.innerText = '전구 A 끊기';
+                discBtn2.innerText = '전구 B 끊기';
+            }
+
+            resetReveals();
+            updateObservations();
+            renderCircuit();
+        }
+
+        function resetPlacement() {
+            bulb1Placed = false;
+            bulb2Placed = false;
+            bulb1Disconnected = false;
+            bulb2Disconnected = false;
+            bulb1BurnedOut = false;
+            bulb2BurnedOut = false;
+            bulb1JustBurned = false;
+            bulb2JustBurned = false;
+            renderCircuit();
+        }
+
+        function toggleSwitch() {
+            switchClosed = !switchClosed;
+            const btn = document.getElementById('switch-btn');
+            const stateText = document.getElementById('switch-state-text');
+            if (switchClosed) {
+                btn.className = 'flex items-center gap-2 px-4 py-2.5 rounded-2xl cute-font text-sm transition-all bg-emerald-600 hover:bg-emerald-500 text-white shadow-md active:scale-95';
+                stateText.innerText = '닫힘 (ON)';
+            } else {
+                btn.className = 'flex items-center gap-2 px-4 py-2.5 rounded-2xl cute-font text-sm transition-all bg-rose-600 hover:bg-rose-500 text-white shadow-md active:scale-95';
+                stateText.innerText = '열림 (OFF)';
+            }
+            renderCircuit();
+        }
+
+        function toggleDisconnect(bulbNum) {
+            if (bulbNum === 1) {
+                if (!bulb1Placed || bulb1BurnedOut) return;
+                bulb1Disconnected = !bulb1Disconnected;
+                const btn = document.getElementById('disc-btn-1');
+                btn.className = bulb1Disconnected
+                    ? 'px-3.5 py-2 rounded-xl text-xs cute-font bg-rose-600 text-white border border-rose-400 transition-all active:scale-95 shadow-sm'
+                    : 'px-3.5 py-2 rounded-xl text-xs cute-font bg-slate-100 hover:bg-slate-200 border border-slate-300 text-slate-700 transition-all active:scale-95 shadow-sm';
+            } else if (bulbNum === 2) {
+                if (!bulb2Placed || bulb2BurnedOut) return;
+                bulb2Disconnected = !bulb2Disconnected;
+                const btn = document.getElementById('disc-btn-2');
+                btn.className = bulb2Disconnected
+                    ? 'px-3.5 py-2 rounded-xl text-xs cute-font bg-rose-600 text-white border border-rose-400 transition-all active:scale-95 shadow-sm'
+                    : 'px-3.5 py-2 rounded-xl text-xs cute-font bg-slate-100 hover:bg-slate-200 border border-slate-300 text-slate-700 transition-all active:scale-95 shadow-sm';
+            }
+            renderCircuit();
+        }
+
+        function adjustVoltage(amount) {
+            voltage = Math.max(1.0, Math.min(10.0, voltage + amount));
+            renderCircuit();
+        }
+
+        function replaceBulb(id) {
+            if (id === 1) { bulb1BurnedOut = false; bulb1Disconnected = false; bulb1JustBurned = false; }
+            else { bulb2BurnedOut = false; bulb2Disconnected = false; bulb2JustBurned = false; }
+            renderCircuit();
+        }
+
+        // ---- Click-to-reveal observation results ----
+        function toggleReveal(key) {
+            const content = document.getElementById('reveal-content-' + key);
+            const btn = document.getElementById('reveal-btn-' + key);
+            const icon = btn.querySelector('i.fa-chevron-down, i.fa-chevron-up');
+            const isHidden = content.classList.contains('hidden');
+            if (isHidden) {
+                content.classList.remove('hidden');
+                content.classList.add('reveal-enter');
+                icon.classList.remove('fa-chevron-down');
+                icon.classList.add('fa-chevron-up');
+            } else {
+                content.classList.add('hidden');
+                content.classList.remove('reveal-enter');
+                icon.classList.remove('fa-chevron-up');
+                icon.classList.add('fa-chevron-down');
+            }
+        }
+
+        function resetReveals() {
+            ['brightness', 'disconnect'].forEach(key => {
+                const content = document.getElementById('reveal-content-' + key);
+                const btn = document.getElementById('reveal-btn-' + key);
+                const icon = btn.querySelector('i.fa-chevron-down, i.fa-chevron-up');
+                content.classList.add('hidden');
+                content.classList.remove('reveal-enter');
+                if (icon) {
+                    icon.classList.remove('fa-chevron-up');
+                    icon.classList.add('fa-chevron-down');
+                }
+            });
+        }
+
+        function updateObservations() {
+            const obsBrightness = document.getElementById('obs-brightness');
+            const obsDisconnect = document.getElementById('obs-disconnect');
+
+            if (currentMode === 'single') {
+                obsBrightness.innerText = '기준 전구 1개가 연결된 상태입니다. 전원 전압 3V에서 밝고 선명하게 켜집니다.';
+                obsDisconnect.innerText = '전선을 끊으면 전류가 차단되어 불이 꺼집니다.';
+            } else if (currentMode === 'series') {
+                obsBrightness.innerText = '(가)에서는 전구 2개가 저항을 나누어 가지므로 회로 전체 저항이 늘어나 전류가 줄어들고, 과정 1의 전구보다 밝기가 어두워집니다.';
+                obsDisconnect.innerText = '(가)에서는 전류가 흐르는 통로가 1개뿐이므로, 전구 1개의 연결을 끊으면 통로 전체가 차단되어 나머지 전구의 불도 함께 꺼집니다.';
+            } else if (currentMode === 'parallel') {
+                obsBrightness.innerText = '(나)에서는 각 전구에 전원 장치의 전압이 그대로 걸리므로, 전구의 밝기가 과정 1의 전구 밝기와 같습니다.';
+                obsDisconnect.innerText = '(나)에서는 전구마다 독립된 전류 통로가 있으므로, 전구 1개의 연결을 끊어도 다른 전구로 가는 통로는 그대로 유지되어 불이 켜진 채로 있습니다.';
+            }
+        }
+
+        function normalizeAnswer(s) {
+            return (s || '').replace(/\s+/g, '').replace(/[.,!?]/g, '');
+        }
+
+        function gradeBlank(inputId, keywords) {
+            const el = document.getElementById(inputId);
+            const val = normalizeAnswer(el.value);
+            const ok = keywords.some(k => val.includes(k));
+            el.classList.remove('border-emerald-500', 'bg-emerald-50', 'border-rose-500', 'bg-rose-50');
+            el.classList.add(ok ? 'border-emerald-500' : 'border-rose-500', ok ? 'bg-emerald-50' : 'bg-rose-50');
+            return ok;
+        }
+
+        // Tracks how many times each quiz question has been submitted wrong in a row,
+        // so we can show a hint on the first miss and the real answer on the second.
+        const quizAttempts = { q1: 0, q2: 0, q3: 0 };
+
+        function showQuestionFeedback(key, ok, successText, hintText, answerText) {
+            const el = document.getElementById(key + '-feedback');
+            if (ok) {
+                quizAttempts[key] = 0;
+                el.innerHTML = `<span class="text-emerald-600">${successText}</span>`;
+                return;
+            }
+            quizAttempts[key]++;
+            if (quizAttempts[key] === 1) {
+                el.innerHTML = `<span class="text-sky-600">💡 힌트: ${hintText}</span>`;
+            } else {
+                el.innerHTML = `<span class="text-rose-500">${answerText}</span>`;
+            }
+        }
+
+        function submitQuiz() {
+            let score = 0;
+
+            // 문제 1: (가) 어두워지고 / (나) 같다
+            const q1b1 = gradeBlank('q1-blank1', ['어두워']);
+            const q1b2 = gradeBlank('q1-blank2', ['같다', '같음', '같아']);
+            const q1ok = q1b1 && q1b2;
+            if (q1ok) score++;
+            showQuestionFeedback(
+                'q1', q1ok,
+                '정답이에요! (가)는 어두워지고, (나)는 과정 1과 같아요.',
+                '전체 저항이 커지면 전류는 어떻게 될지, 그리고 (나)에서는 전구 하나에 걸리는 전압이 과정 1과 비교해서 달라지는지 생각해보세요.',
+                '정답: (가)는 "어두워지고", (나)는 "같다"예요.'
+            );
+
+            // 문제 2: (가) 불도 꺼진다 / (나) 불이 켜진 채로 있다
+            const q2b1 = gradeBlank('q2-blank1', ['꺼진다', '꺼짐', '꺼져']);
+            const q2b2 = gradeBlank('q2-blank2', ['켜진', '켜져']);
+            const q2ok = q2b1 && q2b2;
+            if (q2ok) score++;
+            showQuestionFeedback(
+                'q2', q2ok,
+                '정답이에요! (가)는 불도 꺼지고, (나)는 불이 켜진 채로 있어요.',
+                '(가)는 전류가 흐르는 통로가 하나뿐이고, (나)는 전구마다 독립된 통로가 있다는 점을 떠올려보세요.',
+                '정답: (가)는 "불도 꺼진다", (나)는 "불이 켜진 채로 있다"예요.'
+            );
+
+            // 문제 3(정리): 작아지고 / 커진다 / 흐르지 않지만 / 흐른다
+            const q3b1 = gradeBlank('q3-blank1', ['작아지']);
+            const q3b2 = gradeBlank('q3-blank2', ['커진']);
+            const q3b3 = gradeBlank('q3-blank3', ['흐르지않']);
+            const q3b4 = gradeBlank('q3-blank4', ['흐른다']);
+            const q3ok = q3b1 && q3b2 && q3b3 && q3b4;
+            if (q3ok) score++;
+            showQuestionFeedback(
+                'q3', q3ok,
+                '정답이에요! 직렬은 전체 전류가 작아지고 끊기면 안 흐르고, 병렬은 전체 전류가 커지고 하나가 끊겨도 다른 쪽엔 흘러요.',
+                '직렬연결은 저항이 늘어난 것과 같고 통로가 하나이고, 병렬연결은 전체 저항이 줄어들고 통로가 여러 개라는 점을 생각해보세요.',
+                '정답: 순서대로 "작아지고 / 커진다 / 흐르지 않지만 / 흐른다"예요.'
+            );
+
+            document.getElementById('quiz-score').innerText = score;
+            const feedback = document.getElementById('quiz-feedback');
+            if (score === 3) {
+                feedback.innerHTML = '<span class="text-emerald-600 font-bold">🎉 만점이네요! 저항의 직렬 및 병렬 연결 박사님입니다!</span>';
+            } else {
+                feedback.innerHTML = '<span class="text-amber-600 font-bold">💪 아쉽네요! 힌트를 보고 다시 도전해 보세요.</span>';
+            }
+        }
+
+        // ---- Meter (square digital display) renderer: used for both 전류계 and 전압계 ----
+        function renderMeterSvg(cx, cy, w, h, kind, value, active) {
+            const isAmp = kind === 'A';
+            const border = isAmp ? '#d97706' : '#2563eb';
+            const label = isAmp ? '전류계' : '전압계';
+            const screenText = active ? (isAmp ? '#fbbf24' : '#38bdf8') : '#475569';
+            const displayVal = (active ? value : 0).toFixed(isAmp ? 2 : 1) + (isAmp ? ' A' : ' V');
+            const x = cx - w / 2, y = cy - h / 2;
+
+            return `
+                <g>
+                    <rect x="${x}" y="${y}" width="${w}" height="${h}" rx="8" fill="#1e293b" stroke="${border}" stroke-width="3"/>
+                    <text x="${cx}" y="${y + 15}" text-anchor="middle" font-size="10.5" fill="${border}" font-weight="bold">${label}</text>
+                    <rect x="${x + 6}" y="${y + 20}" width="${w - 12}" height="${h - 28}" rx="4" fill="#0f172a"/>
+                    <text x="${cx}" y="${y + h - 9}" text-anchor="middle" font-size="12.5" font-family="monospace" font-weight="900" fill="${screenText}">${displayVal}</text>
+                </g>
+            `;
+        }
+
+        // ---- Bulb renderer: terminal points are (x-16, y+19) and (x+16, y+19) ----
+        function renderBulbSvg(x, y, isLit, brightness, isDisconnected, label, isBurned, burnedId, isJustBurned, placedId) {
+            isBurned = !!isBurned;
+            let glowColor = isLit ? `rgba(253, 224, 71, ${0.75 + brightness * 0.45})` : 'transparent';
+            let glassFill = isLit ? '#fef08a' : '#f8fafc';
+            let glassStroke = isLit ? '#eab308' : '#cbd5e1';
+            let filamentColor = isLit ? '#ca8a04' : '#94a3b8';
+            let glowClass = isLit ? 'bulb-glow-intense' : '';
+            let crossMark = '';
+            let burnedExtras = '';
+
+            if (isBurned) {
+                glassFill = '#1e293b';
+                glassStroke = '#0f172a';
+                filamentColor = '#334155';
+                glowColor = 'transparent';
+                glowClass = '';
+                const flame = isJustBurned ? `
+                    <!-- warm glow behind the flame -->
+                    <circle class="glow-pulse" cx="${x}" cy="${y-26}" r="36" fill="#f97316" opacity="0.35" filter="blur(9px)"/>
+
+                    <!-- side tongues for a chaotic, campfire-like flicker -->
+                    <g class="flame-flicker-fast" style="transform-origin:${x-10}px ${y-16}px;">
+                        <path d="M ${x-10} ${y-32} C ${x-17} ${y-23} ${x-16} ${y-13} ${x-9} ${y-7} C ${x-3} ${y-13} ${x-3} ${y-24} ${x-10} ${y-32} Z" fill="#dc2626"/>
+                        <path d="M ${x-9} ${y-25} C ${x-13} ${y-19} ${x-12} ${y-12} ${x-8} ${y-9} C ${x-5} ${y-13} ${x-5} ${y-20} ${x-9} ${y-25} Z" fill="#fb923c"/>
+                    </g>
+                    <g class="flame-flicker-slow" style="transform-origin:${x+10}px ${y-14}px;">
+                        <path d="M ${x+10} ${y-30} C ${x+17} ${y-21} ${x+16} ${y-11} ${x+9} ${y-5} C ${x+3} ${y-11} ${x+3} ${y-22} ${x+10} ${y-30} Z" fill="#dc2626"/>
+                        <path d="M ${x+9} ${y-23} C ${x+13} ${y-17} ${x+12} ${y-10} ${x+8} ${y-7} C ${x+5} ${y-11} ${x+5} ${y-18} ${x+9} ${y-23} Z" fill="#fb923c"/>
+                    </g>
+
+                    <!-- main tongue: deep red -> orange -> yellow -> white-hot core -->
+                    <g class="flame-flicker" style="transform-origin:${x}px ${y-20}px;">
+                        <path d="M ${x} ${y-62} C ${x-18} ${y-45} ${x-14} ${y-20} ${x} ${y-9} C ${x+14} ${y-20} ${x+18} ${y-45} ${x} ${y-62} Z" fill="#b91c1c"/>
+                        <path d="M ${x} ${y-52} C ${x-13} ${y-38} ${x-10} ${y-18} ${x} ${y-11} C ${x+10} ${y-18} ${x+13} ${y-38} ${x} ${y-52} Z" fill="#ea580c"/>
+                        <path d="M ${x} ${y-41} C ${x-8} ${y-31} ${x-6} ${y-16} ${x} ${y-13} C ${x+6} ${y-16} ${x+8} ${y-31} ${x} ${y-41} Z" fill="#f97316"/>
+                        <path d="M ${x} ${y-32} C ${x-5} ${y-25} ${x-4} ${y-15} ${x} ${y-13} C ${x+4} ${y-15} ${x+5} ${y-25} ${x} ${y-32} Z" fill="#fbbf24"/>
+                        <path d="M ${x} ${y-24} C ${x-2.5} ${y-19} ${x-2} ${y-14} ${x} ${y-12.5} C ${x+2} ${y-14} ${x+2.5} ${y-19} ${x} ${y-24} Z" fill="#fef9c3"/>
+                    </g>
+
+                    <!-- rising sparks / embers -->
+                    <circle class="spark-rise" cx="${x-7}" cy="${y-38}" r="2" fill="#fde047" style="animation-delay:0s;"/>
+                    <circle class="spark-rise" cx="${x+8}" cy="${y-34}" r="1.6" fill="#fb923c" style="animation-delay:0.3s;"/>
+                    <circle class="spark-rise" cx="${x-2}" cy="${y-42}" r="1.4" fill="#fef08a" style="animation-delay:0.6s;"/>
+                    <circle class="spark-rise" cx="${x+4}" cy="${y-28}" r="1.8" fill="#fbbf24" style="animation-delay:0.9s;"/>
+                    <circle class="spark-rise" cx="${x-4}" cy="${y-24}" r="1.3" fill="#f97316" style="animation-delay:0.15s;"/>
+                ` : '';
+                burnedExtras = `
+                    <path d="M ${x-9} ${y-17} L ${x-2} ${y-8} L ${x-8} ${y+1}" stroke="#64748b" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+                    <path d="M ${x+8} ${y-19} L ${x+2} ${y-9} L ${x+9} ${y-1}" stroke="#64748b" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+                    <ellipse class="smoke-puff" cx="${x-5}" cy="${y-32}" rx="6" ry="8" fill="#94a3b8" opacity="0.5" style="animation-delay:0s;"/>
+                    <ellipse class="smoke-puff" cx="${x+5}" cy="${y-38}" rx="5" ry="7" fill="#cbd5e1" opacity="0.45" style="animation-delay:0.6s;"/>
+                    <ellipse class="smoke-puff" cx="${x}" cy="${y-44}" rx="4" ry="6" fill="#e2e8f0" opacity="0.4" style="animation-delay:1.2s;"/>
+                    ${flame}
+                `;
+            }
+
+            if (isDisconnected && !isBurned) {
+                crossMark = `
+                    <line x1="${x-18}" y1="${y-22}" x2="${x+18}" y2="${y+14}" stroke="#f43f5e" stroke-width="4" stroke-linecap="round"/>
+                    <line x1="${x+18}" y1="${y-22}" x2="${x-18}" y2="${y+14}" stroke="#f43f5e" stroke-width="4" stroke-linecap="round"/>
+                    <rect x="${x-26}" y="${y-40}" width="52" height="18" rx="4" fill="#fff1f2" stroke="#f43f5e" stroke-width="1.5"/>
+                    <text x="${x}" y="${y-27}" fill="#e11d48" font-size="10" text-anchor="middle" font-weight="bold">단선됨</text>
+                `;
+            }
+
+            const labelText = isBurned ? '탄 전구! 클릭해서 교체' : label;
+            const labelColor = isBurned ? '#e11d48' : '#334155';
+
+            const inner = `
+                <!-- Ambient Glow when Lit -->
+                <circle cx="${x}" cy="${y-4}" r="${isLit ? 65 * brightness : 12}" fill="${glowColor}" filter="blur(16px)"/>
+
+                <!-- Terminal leads sticking out of the socket sides, exactly where wires attach -->
+                <circle cx="${x-16}" cy="${y+19}" r="4.5" fill="#eab308" stroke="#a16207" stroke-width="1"/>
+                <circle cx="${x+16}" cy="${y+19}" r="4.5" fill="#eab308" stroke="#a16207" stroke-width="1"/>
+
+                <!-- Realistic Socket Base with Terminal Screws -->
+                <rect x="${x-18}" y="${y+10}" width="36" height="18" rx="4" fill="#e2e8f0" stroke="#94a3b8" stroke-width="2"/>
+                <rect x="${x-8}" y="${y+28}" width="16" height="8" fill="#64748b" rx="2"/>
+
+                <!-- Bulb Glass Body -->
+                <circle cx="${x}" cy="${y-8}" r="22" fill="${glassFill}" stroke="${glassStroke}" stroke-width="2.5" class="${glowClass}"/>
+
+                <!-- Reflection highlight -->
+                <ellipse cx="${x-7}" cy="${y-15}" rx="5" ry="3" fill="#ffffff" opacity="${isLit ? 0.95 : 0.7}" transform="rotate(-30 ${x-7} ${y-15})"/>
+
+                <!-- Filament -->
+                <path d="M ${x-6} ${y+4} L ${x-6} ${y-6} Q ${x} ${y-18} ${x+6} ${y-6} L ${x+6} ${y+4}" stroke="${filamentColor}" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+
+                ${burnedExtras}
+
+                <!-- Label badge -->
+                <rect x="${x-38}" y="${y+40}" width="76" height="20" rx="6" fill="#ffffff" stroke="${isBurned ? '#fda4af' : '#cbd5e1'}" stroke-width="1.5"/>
+                <text x="${x}" y="${y+54}" fill="${labelColor}" font-size="10.5" text-anchor="middle" font-weight="bold">${labelText}</text>
+
+                ${crossMark}
+            `;
+
+            if (isBurned) {
+                return `<g data-burned-bulb="${burnedId}" style="cursor:pointer;"><title>정격 전압을 초과해서 전구가 타버렸어요! 클릭하면 새 전구로 교체합니다.</title>${inner}</g>`;
+            }
+            if (placedId) {
+                return `<g data-placed-bulb="${placedId}" style="cursor:grab; touch-action:none;"><title>드래그하면 회로에서 뺄 수 있어요</title>${inner}</g>`;
+            }
+            return `<g>${inner}</g>`;
+        }
+
+        function renderEmptySocketSvg(x, y, label) {
+            return `
+                <g>
+                    <circle cx="${x}" cy="${y-8}" r="24" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2.5" stroke-dasharray="5,4"/>
+                    <text x="${x}" y="${y-2}" text-anchor="middle" font-size="22" fill="#cbd5e1" font-weight="900">+</text>
+                    <rect x="${x-18}" y="${y+10}" width="36" height="18" rx="4" fill="#f1f5f9" stroke="#cbd5e1" stroke-width="2" stroke-dasharray="4,3"/>
+                    <text x="${x}" y="${y+54}" text-anchor="middle" font-size="10.5" fill="#94a3b8" font-weight="bold">${label} 소켓 (비어있음)</text>
+                </g>
+            `;
+        }
+
+        function renderTrayBulbSvg(x, y, id) {
+            return `
+                <g data-tray-bulb="${id}" class="tray-bulb" style="cursor:grab; touch-action:none;">
+                    <rect x="${x-34}" y="${y-44}" width="68" height="90" fill="transparent" style="touch-action:none;"/>
+                    <rect x="${x-18}" y="${y+10}" width="36" height="18" rx="4" fill="#e2e8f0" stroke="#94a3b8" stroke-width="2"/>
+                    <rect x="${x-8}" y="${y+28}" width="16" height="8" fill="#64748b" rx="2"/>
+                    <circle cx="${x}" cy="${y-8}" r="22" fill="#fef9c3" stroke="#eab308" stroke-width="2.5"/>
+                    <ellipse cx="${x-7}" cy="${y-15}" rx="5" ry="3" fill="#ffffff" opacity="0.8" transform="rotate(-30 ${x-7} ${y-15})"/>
+                    <path d="M ${x-6} ${y+4} L ${x-6} ${y-6} Q ${x} ${y-18} ${x+6} ${y-6} L ${x+6} ${y+4}" stroke="#ca8a04" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+                    <text x="${x}" y="${y+52}" text-anchor="middle" font-size="10.5" fill="#334155" font-weight="bold">👆 드래그해서 연결</text>
+                </g>
+            `;
+        }
+
+        // ---- Slot (socket) positions per mode - shared by rendering & drag target detection ----
+        function getBulbSlots(mode) {
+            if (mode === 'single') return { b1: { x: 350, y: 385 }, b2: null };
+            if (mode === 'series') return { b1: { x: 230, y: 385 }, b2: { x: 470, y: 385 } };
+            if (mode === 'parallel') return { b1: { x: 350, y: 335 }, b2: { x: 350, y: 425 } };
+            return { b1: null, b2: null };
+        }
+
+        // ---- Physics core: given which bulbs are "open" (missing/disconnected/burned), compute circuit values ----
+        function computePhysics(mode, open1, open2) {
+            let totalResistance = 0, totalCurrent = 0;
+            let b1Lit = false, b2Lit = false, b1Brightness = 0, b2Brightness = 0;
+
+            if (!switchClosed) {
+                totalResistance = mode === 'series' ? bulbResistance * 2 : bulbResistance;
+                return { totalResistance, totalCurrent, b1Lit, b2Lit, b1Brightness, b2Brightness };
+            }
+
+            if (mode === 'single') {
+                if (!open1) {
+                    totalResistance = bulbResistance;
+                    totalCurrent = voltage / totalResistance;
+                    b1Lit = true;
+                    b1Brightness = Math.max(0.9, (voltage / 3.0) * 1.4);
+                } else {
+                    totalResistance = Infinity;
+                }
+            } else if (mode === 'series') {
+                if (open1 || open2) {
+                    totalResistance = Infinity;
+                } else {
+                    totalResistance = bulbResistance * 2;
+                    totalCurrent = voltage / totalResistance;
+                    b1Lit = true; b2Lit = true;
+                    b1Brightness = Math.max(0.5, (voltage / 3.0) * 0.75);
+                    b2Brightness = b1Brightness;
+                }
+            } else if (mode === 'parallel') {
+                if (open1 && open2) {
+                    totalResistance = Infinity;
+                } else if (open1) {
+                    totalResistance = bulbResistance;
+                    totalCurrent = voltage / totalResistance;
+                    b2Lit = true;
+                    b2Brightness = Math.max(0.9, (voltage / 3.0) * 1.4);
+                } else if (open2) {
+                    totalResistance = bulbResistance;
+                    totalCurrent = voltage / totalResistance;
+                    b1Lit = true;
+                    b1Brightness = Math.max(0.9, (voltage / 3.0) * 1.4);
+                } else {
+                    totalResistance = bulbResistance / 2;
+                    totalCurrent = voltage / totalResistance;
+                    b1Lit = true; b2Lit = true;
+                    b1Brightness = Math.max(0.9, (voltage / 3.0) * 1.4);
+                    b2Brightness = Math.max(0.9, (voltage / 3.0) * 1.4);
+                }
+            }
+            return { totalResistance, totalCurrent, b1Lit, b2Lit, b1Brightness, b2Brightness };
+        }
+
+        function renderCircuit() {
+            const needs2 = currentMode !== 'single';
+            const slots = getBulbSlots(currentMode);
+
+            // Pass 1: figure out who WOULD be lit right now (before checking burnout)
+            const open1_pass1 = !bulb1Placed || bulb1Disconnected || bulb1BurnedOut;
+            const open2_pass1 = needs2 ? (!bulb2Placed || bulb2Disconnected || bulb2BurnedOut) : true;
+            const provisional = computePhysics(currentMode, open1_pass1, open2_pass1);
+
+            // Burn check: a bulb that is lit while voltage >= BURN_VOLTAGE burns out (permanently, until replaced)
+            if (provisional.b1Lit && voltage >= BURN_VOLTAGE && !bulb1BurnedOut) {
+                bulb1BurnedOut = true;
+                bulb1JustBurned = true;
+                setTimeout(() => { bulb1JustBurned = false; renderCircuit(); }, 3800);
+            }
+            if (needs2 && provisional.b2Lit && voltage >= BURN_VOLTAGE && !bulb2BurnedOut) {
+                bulb2BurnedOut = true;
+                bulb2JustBurned = true;
+                setTimeout(() => { bulb2JustBurned = false; renderCircuit(); }, 3800);
+            }
+
+            // Pass 2: final physics after applying any new burnouts
+            const open1 = !bulb1Placed || bulb1Disconnected || bulb1BurnedOut;
+            const open2 = needs2 ? (!bulb2Placed || bulb2Disconnected || bulb2BurnedOut) : true;
+            const phys = computePhysics(currentMode, open1, open2);
+            const { totalResistance, totalCurrent, b1Lit, b2Lit, b1Brightness, b2Brightness } = phys;
+
+            // Update UI displays
+            document.getElementById('voltage-display').innerText = voltage.toFixed(1) + ' V';
+            document.getElementById('stat-resistance').innerText = (totalResistance === Infinity ? '∞' : totalResistance.toFixed(1)) + ' Ω';
+            document.getElementById('stat-current').innerText = totalCurrent.toFixed(2) + ' A';
+
+            // ---- Fixed layout constants shared by every mode ----
+            const TOWER = { x: 280, y: 15, w: 140, h: 95 };
+            const NEG_T = { x: TOWER.x + 30, y: TOWER.y + TOWER.h };   // (-) terminal, left
+            const POS_T = { x: TOWER.x + 110, y: TOWER.y + TOWER.h };  // (+) terminal, right
+            const ROW1_Y = 150;               // switch / ammeter row
+            const LEFT_RAIL_X = 110;
+            const RIGHT_RAIL_X = 590;
+            const SW = { cx: 170, cy: ROW1_Y, halfW: 30 };  // switch box: left 140, right 200
+            const AMM = { cx: 540, cy: ROW1_Y, w: 76, h: 52 };   // digital ammeter box (in series, right side)
+            const VOLT = { cx: 350, cy: 246, w: 88, h: 52 };     // digital voltmeter box, its own clear row
+            const BUS_Y = 440;                              // bottom bus row (single & series)
+
+            const mainWireActive = currentMode === 'single' || currentMode === 'series'
+                ? (switchClosed && !open1 && (currentMode === 'single' || !open2))
+                : (switchClosed && !(open1 && open2));
+            const voltActive = mainWireActive;
+            const voltReading = voltage;
+
+            const mainColor = mainWireActive ? '#ef4444' : '#94a3b8';
+            const switchColor = switchClosed ? '#10b981' : '#f43f5e';
+
+            let svgContent = '';
+
+            // --- Power supply tower (computer-case style, like the textbook diagram) ---
+            svgContent += `
+                <rect x="${TOWER.x}" y="${TOWER.y}" width="${TOWER.w}" height="${TOWER.h}" rx="14" fill="#1e293b" stroke="#475569" stroke-width="3"/>
+                <rect x="${TOWER.x+14}" y="${TOWER.y+12}" width="${TOWER.w-28}" height="16" rx="4" fill="#0f172a" stroke="#334155" stroke-width="1.5"/>
+                <circle cx="${TOWER.x+22}" cy="${TOWER.y+20}" r="3" fill="${switchClosed ? '#22c55e' : '#64748b'}"/>
+                <circle cx="${TOWER.x+34}" cy="${TOWER.y+20}" r="3" fill="#f59e0b"/>
+                <text x="${TOWER.x+TOWER.w/2}" y="${TOWER.y+50}" fill="#f8fafc" font-size="12" text-anchor="middle" font-weight="bold">직류 전원 장치</text>
+                <text x="${TOWER.x+TOWER.w/2}" y="${TOWER.y+68}" fill="#38bdf8" font-size="10" text-anchor="middle" font-family="monospace">전압 조절 가능</text>
+
+                <!-- (-) and (+) terminals -->
+                <line x1="${NEG_T.x}" y1="${TOWER.y+TOWER.h-2}" x2="${NEG_T.x}" y2="${NEG_T.y}" stroke="#0f172a" stroke-width="4"/>
+                <circle cx="${NEG_T.x}" cy="${NEG_T.y}" r="6" fill="#475569"/>
+                <text x="${NEG_T.x-6}" y="${NEG_T.y+22}" fill="#334155" font-size="14" font-weight="900" text-anchor="middle">(−)</text>
+
+                <line x1="${POS_T.x}" y1="${TOWER.y+TOWER.h-2}" x2="${POS_T.x}" y2="${POS_T.y}" stroke="#ef4444" stroke-width="4"/>
+                <circle cx="${POS_T.x}" cy="${POS_T.y}" r="6" fill="#ef4444"/>
+                <text x="${POS_T.x+8}" y="${POS_T.y+22}" fill="#ef4444" font-size="14" font-weight="900" text-anchor="middle">(+)</text>
+            `;
+
+            // --- Wires from terminals down to the switch/ammeter row ---
+            svgContent += `
+                <path d="M ${NEG_T.x} ${NEG_T.y} L ${NEG_T.x} ${ROW1_Y} L ${SW.cx+SW.halfW} ${ROW1_Y}" stroke="${mainColor}" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M ${SW.cx-SW.halfW} ${ROW1_Y} L ${LEFT_RAIL_X} ${ROW1_Y}" stroke="${mainColor}" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+
+                <path d="M ${POS_T.x} ${POS_T.y} L ${POS_T.x} ${ROW1_Y} L ${AMM.cx-AMM.w/2} ${ROW1_Y}" stroke="${mainColor}" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M ${AMM.cx+AMM.w/2} ${ROW1_Y} L ${RIGHT_RAIL_X} ${ROW1_Y}" stroke="${mainColor}" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+            `;
+
+            // --- Switch symbol ---
+            let switchLeverEnd = switchClosed ? `${SW.cx+SW.halfW-2} ${ROW1_Y}` : `${SW.cx+14} ${ROW1_Y-22}`;
+            svgContent += `
+                <rect x="${SW.cx-SW.halfW-10}" y="${ROW1_Y-22}" width="${SW.halfW*2+20}" height="44" rx="10" fill="#f1f5f9" stroke="#cbd5e1" stroke-width="2"/>
+                <text x="${SW.cx}" y="${ROW1_Y-30}" fill="#475569" font-size="11" text-anchor="middle" font-weight="bold">스위치</text>
+                <circle cx="${SW.cx-SW.halfW}" cy="${ROW1_Y}" r="4.5" fill="#334155"/>
+                <circle cx="${SW.cx+SW.halfW}" cy="${ROW1_Y}" r="4.5" fill="#334155"/>
+                <path d="M ${SW.cx-SW.halfW} ${ROW1_Y} L ${switchLeverEnd}" stroke="${switchColor}" stroke-width="4" stroke-linecap="round"/>
+                ${switchClosed ? `<circle cx="${SW.cx}" cy="${ROW1_Y}" r="5" fill="#fde047"/>` : ''}
+            `;
+
+            // --- Ammeter (always in series on the main loop, drawn as a small digital box) ---
+            svgContent += renderMeterSvg(AMM.cx, AMM.cy, AMM.w, AMM.h, 'A', totalCurrent, mainWireActive);
+
+            let trayContent = '';
+
+            // --- Right / left rails + bulb section, depends on mode ---
+            if (currentMode === 'single') {
+                svgContent += `
+                    <path d="M ${LEFT_RAIL_X} ${ROW1_Y} L ${LEFT_RAIL_X} ${BUS_Y} L 334 ${BUS_Y} L 334 ${385+19}" stroke="${mainColor}" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M ${RIGHT_RAIL_X} ${ROW1_Y} L ${RIGHT_RAIL_X} ${BUS_Y} L 366 ${BUS_Y} L 366 ${385+19}" stroke="${mainColor}" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+                    ${bulb1Placed ? renderBulbSvg(350, 385, b1Lit, b1Brightness, bulb1Disconnected, "전구", bulb1BurnedOut, 1, bulb1JustBurned, 1) : renderEmptySocketSvg(350, 385, "전구")}
+                `;
+                if (!bulb1Placed) trayContent += renderTrayBulbSvg(350, 520, 1);
+
+            } else if (currentMode === 'series') {
+                const by = 385, ty = by + 19;
+                svgContent += `
+                    <path d="M ${LEFT_RAIL_X} ${ROW1_Y} L ${LEFT_RAIL_X} ${BUS_Y} L 214 ${BUS_Y} L 214 ${ty}" stroke="${mainColor}" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M 246 ${ty} L 246 ${BUS_Y} L 454 ${BUS_Y} L 454 ${ty}" stroke="${mainColor}" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M 486 ${ty} L 486 ${BUS_Y} L ${RIGHT_RAIL_X} ${BUS_Y} L ${RIGHT_RAIL_X} ${ROW1_Y}" stroke="${mainColor}" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+                    ${bulb1Placed ? renderBulbSvg(230, by, b1Lit, b1Brightness, bulb1Disconnected, "전구 A", bulb1BurnedOut, 1, bulb1JustBurned, 1) : renderEmptySocketSvg(230, by, "전구 A")}
+                    ${bulb2Placed ? renderBulbSvg(470, by, b2Lit, b2Brightness, bulb2Disconnected, "전구 B", bulb2BurnedOut, 2, bulb2JustBurned, 2) : renderEmptySocketSvg(470, by, "전구 B")}
+                `;
+                if (!bulb1Placed) trayContent += renderTrayBulbSvg(230, 520, 1);
+                if (!bulb2Placed) trayContent += renderTrayBulbSvg(470, 520, 2);
+
+            } else if (currentMode === 'parallel') {
+                const busTop = 330, busBottom = 465;
+                const byA = 335, tyA = byA + 19;
+                const byB = 425, tyB = byB + 19;
+                const busL = 250, busR = 450;
+                const b1Active = switchClosed && !open1;
+                const b2Active = switchClosed && !open2;
+                const b1Color = b1Active ? '#ef4444' : '#94a3b8';
+                const b2Color = b2Active ? '#ef4444' : '#94a3b8';
+
+                svgContent += `
+                    <!-- trunk down to the shared parallel bus -->
+                    <path d="M ${LEFT_RAIL_X} ${ROW1_Y} L ${LEFT_RAIL_X} ${busTop} L ${busL} ${busTop}" stroke="${mainColor}" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M ${RIGHT_RAIL_X} ${ROW1_Y} L ${RIGHT_RAIL_X} ${busTop} L ${busR} ${busTop}" stroke="${mainColor}" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+                    <!-- shared vertical bus bars -->
+                    <path d="M ${busL} ${busTop} L ${busL} ${busBottom}" stroke="${mainColor}" stroke-width="4" fill="none" stroke-linecap="round"/>
+                    <path d="M ${busR} ${busTop} L ${busR} ${busBottom}" stroke="${mainColor}" stroke-width="4" fill="none" stroke-linecap="round"/>
+
+                    <!-- branch A -->
+                    <path d="M ${busL} ${tyA} L 334 ${tyA}" stroke="${b1Color}" stroke-width="4" fill="none" stroke-linecap="round"/>
+                    <path d="M 366 ${tyA} L ${busR} ${tyA}" stroke="${b1Color}" stroke-width="4" fill="none" stroke-linecap="round"/>
+                    <!-- branch B -->
+                    <path d="M ${busL} ${tyB} L 334 ${tyB}" stroke="${b2Color}" stroke-width="4" fill="none" stroke-linecap="round"/>
+                    <path d="M 366 ${tyB} L ${busR} ${tyB}" stroke="${b2Color}" stroke-width="4" fill="none" stroke-linecap="round"/>
+
+                    ${bulb1Placed ? renderBulbSvg(350, byA, b1Lit, b1Brightness, bulb1Disconnected, "전구 A", bulb1BurnedOut, 1, bulb1JustBurned, 1) : renderEmptySocketSvg(350, byA, "전구 A")}
+                    ${bulb2Placed ? renderBulbSvg(350, byB, b2Lit, b2Brightness, bulb2Disconnected, "전구 B", bulb2BurnedOut, 2, bulb2JustBurned, 2) : renderEmptySocketSvg(350, byB, "전구 B")}
+                `;
+                if (!bulb1Placed) trayContent += renderTrayBulbSvg(230, 520, 1);
+                if (!bulb2Placed) trayContent += renderTrayBulbSvg(470, 520, 2);
+            }
+
+            // --- Voltmeter: taps straight off the left/right rails (same node as the bulb
+            //     section's two ends in every mode), on its own empty row so it never
+            //     crosses or covers the tower, switch, ammeter, or bulbs. Solid line, same
+            //     style as the rest of the circuit - it's still one circuit. ---
+            const voltColor = voltActive ? '#2563eb' : '#94a3b8';
+            svgContent += `
+                <path d="M ${LEFT_RAIL_X} ${VOLT.cy} L ${VOLT.cx-VOLT.w/2} ${VOLT.cy}" stroke="${voltColor}" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M ${RIGHT_RAIL_X} ${VOLT.cy} L ${VOLT.cx+VOLT.w/2} ${VOLT.cy}" stroke="${voltColor}" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+                <circle cx="${LEFT_RAIL_X}" cy="${VOLT.cy}" r="4" fill="${voltColor}"/>
+                <circle cx="${RIGHT_RAIL_X}" cy="${VOLT.cy}" r="4" fill="${voltColor}"/>
+                ${renderMeterSvg(VOLT.cx, VOLT.cy, VOLT.w, VOLT.h, 'V', voltReading, voltActive)}
+            `;
+
+            // --- Parts tray (부품 보관함): drag a bulb from here onto an empty socket above ---
+            const trayNeeded = (!bulb1Placed) || (needs2 && !bulb2Placed);
+            if (trayNeeded) {
+                svgContent += `
+                    <rect x="60" y="478" width="580" height="82" rx="16" fill="#fffbeb" stroke="#fcd34d" stroke-width="2" stroke-dasharray="7,4"/>
+                    <text x="350" y="497" text-anchor="middle" font-size="12" fill="#b45309" font-weight="bold">🧰 부품 보관함 - 전구를 위 회로의 빈 소켓으로 드래그하세요</text>
+                    ${trayContent}
+                `;
+            }
+
+            const svg = document.getElementById('circuit-svg');
+            svg.innerHTML = svgContent;
+
+            // Enable/disable disconnect buttons based on placement & burnout state
+            const discBtn1 = document.getElementById('disc-btn-1');
+            const discBtn2 = document.getElementById('disc-btn-2');
+            const b1Ready = bulb1Placed && !bulb1BurnedOut;
+            const b2Ready = bulb2Placed && !bulb2BurnedOut;
+            discBtn1.disabled = !b1Ready;
+            discBtn1.classList.toggle('opacity-40', !b1Ready);
+            discBtn1.classList.toggle('cursor-not-allowed', !b1Ready);
+            if (needs2) {
+                discBtn2.disabled = !b2Ready;
+                discBtn2.classList.toggle('opacity-40', !b2Ready);
+                discBtn2.classList.toggle('cursor-not-allowed', !b2Ready);
+            }
+
+            updateFireBanner();
+        }
+
+        function updateFireBanner() {
+            const banner = document.getElementById('fire-warning-banner');
+            const burning = bulb1JustBurned || bulb2JustBurned;
+            if (burning) {
+                banner.classList.remove('hidden');
+                banner.classList.add('show');
+            } else {
+                banner.classList.add('hidden');
+                banner.classList.remove('show');
+            }
+        }
+
+        // ---- Drag & drop: convert pointer position to SVG user-space coordinates ----
+        function svgPoint(evt) {
+            const svg = document.getElementById('circuit-svg');
+            const pt = svg.createSVGPoint();
+            pt.x = evt.clientX;
+            pt.y = evt.clientY;
+            return pt.matrixTransform(svg.getScreenCTM().inverse());
+        }
+
+        function startDrag(bulbId, evt, fromPlaced, sourceEl) {
+            evt.preventDefault();
+            dragActive = true;
+            const svg = document.getElementById('circuit-svg');
+            const ns = 'http://www.w3.org/2000/svg';
+
+            // If picking an already-connected bulb back up, just dim it in place
+            // (no re-render mid-drag - replacing the SVG would destroy the pointerdown
+            // target and can break touch dragging).
+            if (fromPlaced && sourceEl) {
+                sourceEl.style.opacity = '0.2';
+                sourceEl.style.pointerEvents = 'none';
+            }
+
+            const ghost = document.createElementNS(ns, 'g');
+            ghost.setAttribute('opacity', '0.9');
+            ghost.style.pointerEvents = 'none';
+            svg.appendChild(ghost);
+
+            // Keep receiving move/up events on this pointer even if the finger
+            // slides off the original element (important for touch dragging).
+            try { evt.target.setPointerCapture(evt.pointerId); } catch (err) {}
+
+            let lastPt = svgPoint(evt);
+            ghost.innerHTML = renderBulbSvg(lastPt.x, lastPt.y, false, 0, false, '연결하기', false, null);
+
+            function onMove(e) {
+                e.preventDefault();
+                lastPt = svgPoint(e);
+                ghost.innerHTML = renderBulbSvg(lastPt.x, lastPt.y, false, 0, false, '연결하기', false, null);
+            }
+            function onUp(e) {
+                e.preventDefault();
+                window.removeEventListener('pointermove', onMove);
+                window.removeEventListener('pointerup', onUp);
+                window.removeEventListener('pointercancel', onUp);
+                if (ghost.parentNode) ghost.remove();
+                dragActive = false;
+
+                const slots = getBulbSlots(currentMode);
+                const target = bulbId === 1 ? slots.b1 : slots.b2;
+                let droppedOnSocket = false;
+                if (target) {
+                    const dist = Math.hypot(lastPt.x - target.x, lastPt.y - (target.y - 4));
+                    droppedOnSocket = dist < 60;
+                }
+
+                if (droppedOnSocket) {
+                    if (bulbId === 1) bulb1Placed = true; else bulb2Placed = true;
+                } else if (fromPlaced) {
+                    // Dropped away from its socket while it was connected - pull it out.
+                    if (bulbId === 1) { bulb1Placed = false; bulb1Disconnected = false; }
+                    else { bulb2Placed = false; bulb2Disconnected = false; }
+                }
+                // (a tray bulb dropped in empty space just falls back to the tray -
+                // its placed flag was never set true, so nothing else to do)
+                renderCircuit();
+            }
+            window.addEventListener('pointermove', onMove, { passive: false });
+            window.addEventListener('pointerup', onUp, { passive: false });
+            window.addEventListener('pointercancel', onUp, { passive: false });
+        }
+
+        function initInteractions() {
+            const svg = document.getElementById('circuit-svg');
+            svg.addEventListener('pointerdown', function (e) {
+                const trayEl = e.target.closest('[data-tray-bulb]');
+                if (trayEl) {
+                    startDrag(parseInt(trayEl.getAttribute('data-tray-bulb'), 10), e, false, trayEl);
+                    return;
+                }
+                const placedEl = e.target.closest('[data-placed-bulb]');
+                if (placedEl) {
+                    startDrag(parseInt(placedEl.getAttribute('data-placed-bulb'), 10), e, true, placedEl);
+                    return;
+                }
+                const burnedEl = e.target.closest('[data-burned-bulb]');
+                if (burnedEl) {
+                    replaceBulb(parseInt(burnedEl.getAttribute('data-burned-bulb'), 10));
+                }
+            }, { passive: false });
+        }
+
+        // Initial render on window load
+        window.onload = function () {
+            renderCircuit();
+            initInteractions();
+        };
+    </script>
+</body>
+</html>
