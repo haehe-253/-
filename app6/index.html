@@ -1,0 +1,1073 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>전류가 흐르는 코일 주위의 자기장 - 가상실험</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- React & ReactDOM -->
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  <!-- Babel -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Noto Sans KR', sans-serif;
+      background-color: #f8fafc;
+      user-select: none;
+    }
+    .compass-shadow {
+      filter: drop-shadow(0px 4px 6px rgba(0,0,0,0.15));
+    }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen">
+
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect, useRef } = React;
+
+    function CoilMagnetExperiment() {
+      // Navigation Tab State
+      const [activeTab, setActiveTab] = useState('exp1');
+
+      // --- Experiment 1 & Circuit States ---
+      const [powerOn, setPowerOn] = useState(false);
+      const [wirePolarity, setWirePolarity] = useState('normal'); // 'normal' | 'reversed'
+      const [showRightHand, setShowRightHand] = useState(true);
+      const [showFieldLines, setShowFieldLines] = useState(true);
+      const [showEarthField, setShowEarthField] = useState(true);
+
+      // Interactive Draggable Compasses State
+      const defaultCompassPositions = [
+        { id: 1, x: -140, y: 0, label: '1' },
+        { id: 2, x: 140, y: 0, label: '2' },
+        { id: 3, x: 0, y: 0, label: '3' },
+        { id: 4, x: -70, y: -70, label: '4' },
+        { id: 5, x: 70, y: -70, label: '5' },
+        { id: 6, x: 0, y: -75, label: '6' },
+        { id: 7, x: -70, y: 70, label: '7' },
+        { id: 8, x: 70, y: 70, label: '8' },
+        { id: 9, x: 0, y: 75, label: '9' }
+      ];
+
+      const [compasses, setCompasses] = useState(defaultCompassPositions);
+      const [activeCompassId, setActiveCompassId] = useState(null);
+      const svgRef = useRef(null);
+
+      // Reset all compasses
+      const resetCompasses = () => {
+        setCompasses(defaultCompassPositions);
+      };
+
+      // Add a new compass
+      const addCompass = () => {
+        const newId = Date.now();
+        setCompasses(prev => [...prev, { id: newId, x: (Math.random() - 0.5) * 100, y: -110 + (Math.random() - 0.5) * 20, label: `${prev.length + 1}` }]);
+      };
+
+      // --- Experiment 2 States ---
+      const [exp2PowerOn, setExp2PowerOn] = useState(false);
+      const [currentAmpere, setCurrentAmpere] = useState(1.5); // Range: 0.5A - 3.0A
+
+      // --- Quiz & Interactive Problem Solving States ---
+      const [quizAnswers, setQuizAnswers] = useState({
+        q1: null, q2: null, q3: null, q4: null, q5: null
+      });
+      const [submitted, setSubmitted] = useState(false);
+      const [score, setScore] = useState(0);
+
+      const calculateCompassAngle = (cx, cy) => {
+        let Bx = 0;
+        let By = showEarthField ? -1.0 : 0.0001; // Earth field points North (-Y in SVG)
+
+        if (powerOn || (activeTab === 'exp2' && exp2PowerOn)) {
+          const currentVal = activeTab === 'exp2' ? currentAmpere : 1.5;
+          const isRightNPole = wirePolarity === 'normal';
+          const coilLength = 160;
+          const coilRadius = 45;
+          const strengthFactor = 2.5 * currentVal;
+
+          let coilBx = 0;
+          let coilBy = 0;
+
+          if (Math.abs(cx) <= coilLength / 2 && Math.abs(cy) <= coilRadius) {
+            // Inside Solenoid: Magnetic field vectors point straight toward N-pole
+            coilBx = isRightNPole ? 1.0 : -1.0;
+            coilBy = 0;
+          } else {
+            // Outside Solenoid: Continuous dipole curve from N to S
+            const nPoleX = isRightNPole ? coilLength / 2 : -coilLength / 2;
+            const sPoleX = isRightNPole ? -coilLength / 2 : coilLength / 2;
+
+            const rN_x = cx - nPoleX;
+            const rN_y = cy;
+            const dN3 = Math.pow(rN_x * rN_x + rN_y * rN_y, 1.5) || 1;
+
+            const rS_x = cx - sPoleX;
+            const rS_y = cy;
+            const dS3 = Math.pow(rS_x * rS_x + rS_y * rS_y, 1.5) || 1;
+
+            coilBx = (rN_x / dN3 - rS_x / dS3);
+            coilBy = (rN_y / dN3 - rS_y / dS3);
+
+            const mag = Math.sqrt(coilBx * coilBx + coilBy * coilBy) || 1;
+            coilBx = coilBx / mag;
+            coilBy = coilBy / mag;
+          }
+
+          Bx += coilBx * strengthFactor;
+          By += coilBy * strengthFactor;
+        }
+
+        const angleRad = Math.atan2(By, Bx);
+        return angleRad * (180 / Math.PI);
+      };
+
+      const handleCompassPointerDown = (e, id) => {
+        e.stopPropagation();
+        setActiveCompassId(id);
+      };
+
+      const handleBoardPointerMove = (e) => {
+        if (activeCompassId === null || !svgRef.current) return;
+        const rect = svgRef.current.getBoundingClientRect();
+        const clientX = e.clientX || (e.touches && e.touches[0].clientX);
+        const clientY = e.clientY || (e.touches && e.touches[0].clientY);
+
+        if (clientX !== undefined && clientY !== undefined) {
+          const svgX = Math.max(-230, Math.min(230, ((clientX - rect.left) / rect.width) * 520 - 260));
+          const svgY = Math.max(-150, Math.min(150, ((clientY - rect.top) / rect.height) * 360 - 180));
+
+          setCompasses(prev => prev.map(c => c.id === activeCompassId ? { ...c, x: svgX, y: svgY } : c));
+        }
+      };
+
+      const handleBoardPointerUp = () => {
+        setActiveCompassId(null);
+      };
+
+      useEffect(() => {
+        if (activeCompassId !== null) {
+          window.addEventListener('mousemove', handleBoardPointerMove);
+          window.addEventListener('mouseup', handleBoardPointerUp);
+          window.addEventListener('touchmove', handleBoardPointerMove);
+          window.addEventListener('touchend', handleBoardPointerUp);
+        }
+        return () => {
+          window.removeEventListener('mousemove', handleBoardPointerMove);
+          window.removeEventListener('mouseup', handleBoardPointerUp);
+          window.removeEventListener('touchmove', handleBoardPointerMove);
+          window.removeEventListener('touchend', handleBoardPointerUp);
+        };
+      }, [activeCompassId]);
+
+      // Quiz Questions Dataset
+      const quizQuestions = [
+        {
+          id: 'q1',
+          question: '1. [결론 도출] 전류의 방향이 바뀔 때 나침반 바늘이 가리키는 방향은 어떻게 달라지는가?',
+          options: [
+            { text: '처음 가리키던 방향 그대로이다.', correct: false },
+            { text: '반대로 바뀐다.', correct: true },
+            { text: '항상 북쪽만 가리킨다.', correct: false },
+            { text: '계속 빙글빙글 회전한다.', correct: false }
+          ],
+          explanation: '전류의 방향이 바뀌면 나침반 바늘이 가리키는 방향이 반대로 바뀝니다.'
+        },
+        {
+          id: 'q2',
+          question: '2. [결론 도출] 전류의 세기에 따라 클립이 움직이는 정도는 어떻게 달라지는가? 전류의 세기를 세게 하면 클립이 ( ).',
+          options: [
+            { text: '더 많이 끌려온다.', correct: true },
+            { text: '덜 끌려온다.', correct: false },
+            { text: '움직임에 변화가 없다.', correct: false },
+            { text: '코일에서 멀어진다.', correct: false }
+          ],
+          explanation: '전류의 세기를 세게 하면 코일 주위의 자기장이 강해져 클립이 더 많이 끌려옵니다.'
+        },
+        {
+          id: 'q3',
+          question: '3. [정리해 볼까 ①] 전류의 방향을 바꾸었을 때 나침반 바늘이 가리키는 방향의 변화로 알 수 있는 것은? 코일에 흐르는 전류의 방향이 달라지면 코일 주위의 ( ).',
+          options: [
+            { text: '자기장의 세기가 0이 된다.', correct: false },
+            { text: '자기장의 세기만 바뀐다.', correct: false },
+            { text: '자기장 방향이 바뀐다.', correct: true },
+            { text: '자기장이 변하지 않는다.', correct: false }
+          ],
+          explanation: '전류의 방향이 달라지면 나침반 바늘이 가리키는 방향이 반대가 되므로, 코일 주위의 자기장 방향이 바뀐다는 것을 알 수 있습니다.'
+        },
+        {
+          id: 'q4',
+          question: '4. [정리해 볼까 ②] 전류의 세기가 증가하면 클립이 받는 자기력의 크기는 어떻게 되는가?',
+          options: [
+            { text: '자기력의 크기가 감소한다.', correct: false },
+            { text: '자기력의 크기가 변하지 않는다.', correct: false },
+            { text: '자기력의 크기가 0이 된다.', correct: false },
+            { text: '자기력의 크기가 증가한다.', correct: true }
+          ],
+          explanation: '코일에 흐르는 전류의 세기가 증가하면 클립이 받는 자기력의 크기도 증가합니다.'
+        },
+        {
+          id: 'q5',
+          question: '5. [정리해 볼까 ②] 전류의 세기가 감소하면 클립이 받는 자기력의 크기는 어떻게 되는가?',
+          options: [
+            { text: '자기력의 크기가 증가한다.', correct: false },
+            { text: '자기력의 크기가 감소한다.', correct: true },
+            { text: '자기력의 크기가 변하지 않는다.', correct: false },
+            { text: '자기력의 방향이 반대로 바뀐다.', correct: false }
+          ],
+          explanation: '전류의 세기가 감소하면 클립이 받는 자기력의 크기도 감소합니다.'
+        }
+      ];
+
+      const handleQuizSelect = (qId, optionIdx) => {
+        setQuizAnswers(prev => ({ ...prev, [qId]: optionIdx }));
+      };
+
+      const calculateScore = () => {
+        let correctCount = 0;
+        quizQuestions.forEach((q) => {
+          const selectedIdx = quizAnswers[q.id];
+          if (selectedIdx !== null && q.options[selectedIdx]?.correct) {
+            correctCount += 1;
+          }
+        });
+        setScore(correctCount);
+        setSubmitted(true);
+      };
+
+      return (
+        <div className="max-w-7xl mx-auto p-3 sm:p-6 min-h-screen flex flex-col">
+          {/* Top Banner & Title */}
+          <header className="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 mb-6 flex flex-col lg:flex-row items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-xl bg-indigo-600 text-white flex items-center justify-center font-black text-3xl shadow-md shadow-indigo-200">
+                ⚡
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-base font-extrabold px-2.5 py-0.5 rounded-full bg-indigo-100 text-indigo-700">
+                    중학교 2학년 과학
+                  </span>
+                  <span className="text-base text-slate-500 font-medium">전기와 자기 단원</span>
+                </div>
+                <h1 className="text-2xl font-black text-slate-800 tracking-tight mt-0.5">
+                  전류가 흐르는 코일 주위의 자기장 가상실험
+                </h1>
+              </div>
+            </div>
+
+            {/* Navigation Tabs */}
+            <div className="flex bg-slate-100 p-1.5 rounded-xl border border-slate-200 w-full lg:w-auto">
+              <button
+                onClick={() => setActiveTab('exp1')}
+                className={`flex-1 md:flex-none px-4 py-2.5 rounded-lg text-base sm:text-lg font-bold transition-all ${
+                  activeTab === 'exp1'
+                    ? 'bg-white text-indigo-600 shadow-sm'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                🧭 1. 나침반과 자기장
+              </button>
+              <button
+                onClick={() => setActiveTab('exp2')}
+                className={`flex-1 md:flex-none px-4 py-2.5 rounded-lg text-base sm:text-lg font-bold transition-all ${
+                  activeTab === 'exp2'
+                    ? 'bg-white text-indigo-600 shadow-sm'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                📎 2. 전류 세기와 클립
+              </button>
+              <button
+                onClick={() => setActiveTab('quiz')}
+                className={`flex-1 md:flex-none px-4 py-2.5 rounded-lg text-base sm:text-lg font-bold transition-all ${
+                  activeTab === 'quiz'
+                    ? 'bg-white text-indigo-600 shadow-sm'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                📝 문제 풀기 & 개념 정리
+              </button>
+            </div>
+          </header>
+
+          {/* TAB 1: EXPERIMENT 1 - COMPASS & MAGNETIC FIELD */}
+          {activeTab === 'exp1' && (
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 flex-1">
+              {/* Controls Column */}
+              <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex flex-col justify-between space-y-6">
+                <div>
+                  <h2 className="text-xl font-extrabold text-slate-800 border-b border-slate-100 pb-3 mb-4 flex items-center gap-2">
+                    <span className="w-2.5 h-5 bg-indigo-600 rounded-full"></span>
+                    회로 및 전원 장치 설정
+                  </h2>
+
+                  {/* 1. Circuit Knife Switch */}
+                  <div className="mb-5 bg-slate-50 p-4 rounded-xl border border-slate-200">
+                    <div className="flex justify-between items-center mb-2">
+                      <label className="text-base font-bold text-slate-700">1. 스위치 (전원 연결)</label>
+                      <span className={`text-base font-extrabold px-2 py-0.5 rounded-full ${powerOn ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-600'}`}>
+                        {powerOn ? '스위치 닫힘 (ON)' : '스위치 열림 (OFF)'}
+                      </span>
+                    </div>
+                    <button
+                      onClick={() => setPowerOn(!powerOn)}
+                      className={`w-full py-3 px-4 rounded-xl font-bold text-lg transition-all flex items-center justify-center gap-2 shadow-sm ${
+                        powerOn
+                          ? 'bg-emerald-500 text-white hover:bg-emerald-600 ring-4 ring-emerald-100'
+                          : 'bg-rose-500 text-white hover:bg-rose-600 ring-4 ring-rose-100'
+                      }`}
+                    >
+                      <span className={`w-3 h-3 rounded-full ${powerOn ? 'bg-white animate-ping' : 'bg-white/80'}`}></span>
+                      {powerOn ? '전류 흐름 중 (스위치 OFF하기)' : '스위치 닫기 (전류 흘리기)'}
+                    </button>
+                  </div>
+
+                  {/* 2. Wire Connection Switcher (+) and (-) Terminals */}
+                  <div className="mb-5 bg-slate-50 p-4 rounded-xl border border-slate-200">
+                    <label className="text-base font-bold text-slate-700 block mb-2">
+                      2. 전원 장치 극성 단자 연결
+                    </label>
+                    <div className="grid grid-cols-2 gap-2 mb-2">
+                      <button
+                        onClick={() => setWirePolarity('normal')}
+                        className={`p-2.5 rounded-xl text-base font-bold border transition-all flex flex-col items-center justify-center gap-1 ${
+                          wirePolarity === 'normal'
+                            ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
+                            : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-100'
+                        }`}
+                      >
+                        <span className="flex items-center gap-1">
+                          <span className="w-2.5 h-2.5 rounded-full bg-red-500 inline-block"></span>
+                          왼쪽: <strong className="underline">(+)극</strong>
+                        </span>
+                        <span className="flex items-center gap-1 opacity-90">
+                          <span className="w-2.5 h-2.5 rounded-full bg-blue-500 inline-block"></span>
+                          오른쪽: <strong>(-)극</strong>
+                        </span>
+                      </button>
+
+                      <button
+                        onClick={() => setWirePolarity('reversed')}
+                        className={`p-2.5 rounded-xl text-base font-bold border transition-all flex flex-col items-center justify-center gap-1 ${
+                          wirePolarity === 'reversed'
+                            ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
+                            : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-100'
+                        }`}
+                      >
+                        <span className="flex items-center gap-1">
+                          <span className="w-2.5 h-2.5 rounded-full bg-blue-500 inline-block"></span>
+                          왼쪽: <strong>(-)극</strong>
+                        </span>
+                        <span className="flex items-center gap-1 opacity-90">
+                          <span className="w-2.5 h-2.5 rounded-full bg-red-500 inline-block"></span>
+                          오른쪽: <strong className="underline">(+)극</strong>
+                        </span>
+                      </button>
+                    </div>
+                    <p className="text-sm text-slate-500 font-medium">
+                      💡 전원 장치의 (+)극과 (-)극 전선을 바꾸면 코일에 흐르는 전류 방향이 반대가 됩니다.
+                    </p>
+                  </div>
+
+                  {/* 3. Display Option Toggles */}
+                  <div className="space-y-2 bg-slate-50 p-4 rounded-xl border border-slate-200">
+                    <label className="text-base font-bold text-slate-700 block mb-1">3. 보조 가이드 표시</label>
+
+                    <label className="flex items-center gap-2 text-base text-slate-700 cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={showFieldLines}
+                        onChange={(e) => setShowFieldLines(e.target.checked)}
+                        className="w-5 h-5 text-indigo-600 rounded focus:ring-indigo-500"
+                      />
+                      <span className="font-semibold">➰ 코일 자기력선 표시</span>
+                    </label>
+
+                    <label className="flex items-center gap-2 text-base text-slate-700 cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={showEarthField}
+                        onChange={(e) => setShowEarthField(e.target.checked)}
+                        className="w-5 h-5 text-indigo-600 rounded focus:ring-indigo-500"
+                      />
+                      <span className="font-semibold">🧭 지구 자기장 영향 포함</span>
+                    </label>
+                  </div>
+                </div>
+
+                {/* Right Hand Rule Core Tip */}
+                <div className="bg-amber-50 border border-amber-200 rounded-xl p-3.5 text-base text-amber-900 leading-relaxed">
+                  <div className="font-extrabold mb-1 text-amber-950 flex items-center gap-1">
+                    💡 교과서 핵심: 오른손 법칙
+                  </div>
+                  오른손 네 손가락을 <span className="font-bold underline text-amber-950">전류의 방향</span>으로 감싸쥘 때, 펼친 엄지손가락이 가리키는 방향이 코일 내부의 <span className="font-bold underline text-amber-950">자기장 방향(N극)</span>입니다!
+                </div>
+              </div>
+
+              {/* Simulation Interactive Canvas Column */}
+              <div className="lg:col-span-2 bg-white rounded-2xl p-4 sm:p-5 shadow-sm border border-slate-200 flex flex-col justify-between items-center relative overflow-hidden">
+                {/* Header status info */}
+                <div className="w-full flex flex-wrap items-center justify-between text-base font-bold mb-2 gap-2 px-1">
+                  <span className="text-slate-700 flex items-center gap-1.5 bg-amber-50 px-3 py-1 rounded-full border border-amber-200">
+                    <span>👆</span>
+                    <span>그림 속 스위치/단자를 눌러 작동하거나 나침반을 직접 드래그해 보세요!</span>
+                  </span>
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={addCompass}
+                      className="px-2.5 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg border border-indigo-200 text-base font-bold transition-all"
+                    >
+                      ➕ 나침반 추가
+                    </button>
+                    <button
+                      onClick={resetCompasses}
+                      className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg border border-slate-200 text-base font-bold transition-all"
+                    >
+                      🔄 나침반 재정렬
+                    </button>
+                  </div>
+                </div>
+
+                <div className="w-full flex-1 flex items-center justify-center relative my-1 min-h-[460px]">
+                  <svg
+                    ref={svgRef}
+                    viewBox="-260 -180 520 360"
+                    className="w-full h-full max-h-[560px] select-none touch-none"
+                  >
+                    <defs>
+                      {/* Gradient for Copper Winding */}
+                      <linearGradient id="coilGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                        <stop offset="0%" stopColor="#fbbf24" />
+                        <stop offset="50%" stopColor="#d97706" />
+                        <stop offset="100%" stopColor="#78350f" />
+                      </linearGradient>
+
+                      {/* Arrow heads for current and magnetic field */}
+                      <marker id="arrowRed" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                        <path d="M 0 0 L 10 5 L 0 10 z" fill="#ef4444" />
+                      </marker>
+                      <marker id="arrowBlue" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                        <path d="M 0 0 L 10 5 L 0 10 z" fill="#3b82f6" />
+                      </marker>
+                      <marker id="arrowGreen" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                        <path d="M 0 0 L 10 5 L 0 10 z" fill="#10b981" />
+                      </marker>
+                    </defs>
+
+                    {/* Ground Board Base */}
+                    <rect x="-250" y="-170" width="500" height="340" rx="16" fill="#f8fafc" stroke="#cbd5e1" strokeWidth="2" />
+
+                    {/* 방위표 (오른쪽 위) */}
+                    <g transform="translate(196, -118)">
+                      <circle cx="0" cy="0" r="26" fill="#ffffff" stroke="#cbd5e1" strokeWidth="1.5" />
+                      <line x1="0" y1="20" x2="0" y2="-18" stroke="#64748b" strokeWidth="2.5" />
+                      <line x1="-20" y1="0" x2="20" y2="0" stroke="#64748b" strokeWidth="2.5" />
+                      <polygon points="0,-24 -6,-10 6,-10" fill="#ef4444" />
+                      <text x="0" y="-32" fill="#ef4444" fontSize="14" fontWeight="extrabold" textAnchor="middle">북</text>
+                      <text x="0" y="46" fill="#64748b" fontSize="14" fontWeight="bold" textAnchor="middle">남</text>
+                      <text x="-32" y="5" fill="#64748b" fontSize="14" fontWeight="bold" textAnchor="end">서</text>
+                      <text x="32" y="5" fill="#64748b" fontSize="14" fontWeight="bold" textAnchor="start">동</text>
+                    </g>
+
+                    {/* Magnetic Field Lines (Green dashed loops) */}
+                    {powerOn && showFieldLines && (
+                      <g className="transition-opacity duration-300 opacity-70">
+                        <path d="M -80 0 C -80 -120, 80 -120, 80 0 C 80 120, -80 120, -80 0" fill="none" stroke="#10b981" strokeWidth="2" strokeDasharray="4,4" />
+                        <path d="M -80 0 C -80 -150, 80 -150, 80 0 C 80 150, -80 150, -80 0" fill="none" stroke="#10b981" strokeWidth="1.5" strokeDasharray="4,4" />
+                        <path d="M -80 0 C -80 -65, 80 -65, 80 0 C 80 65, -80 65, -80 0" fill="none" stroke="#10b981" strokeWidth="1.5" strokeDasharray="4,4" />
+
+                        {/* Internal Magnetic Vector Arrow */}
+                        <line
+                          x1={wirePolarity === 'normal' ? -70 : 70}
+                          y1="0"
+                          x2={wirePolarity === 'normal' ? 70 : -70}
+                          y2="0"
+                          stroke="#10b981"
+                          strokeWidth="4"
+                          markerEnd="url(#arrowGreen)"
+                        />
+                      </g>
+                    )}
+
+                    {/* Coil Base Tube Structure */}
+                    <rect x="-85" y="-35" width="170" height="70" rx="8" fill="#e2e8f0" stroke="#cbd5e1" strokeWidth="2" />
+
+                    {/* Coil Terminal Binding Posts on Board */}
+                    <circle cx="-82" cy="35" r="7" fill="#334155" stroke="#cbd5e1" strokeWidth="2" />
+                    <circle cx="82" cy="35" r="7" fill="#334155" stroke="#cbd5e1" strokeWidth="2" />
+
+                    {/* Coil Windings */}
+                    {[-70, -42, -14, 14, 42, 70].map((cx, i) => (
+                      <g key={i}>
+                        {/* Back Loop */}
+                        <path d={`M ${cx - 10} -35 Q ${cx} -48 ${cx + 10} -35`} fill="none" stroke="#78350f" strokeWidth="4" />
+                        {/* Front Loop Overlap */}
+                        <path d={`M ${cx - 12} 35 C ${cx - 18} -20, ${cx + 18} -20, ${cx + 12} -35`} fill="none" stroke="url(#coilGrad)" strokeWidth="10" strokeLinecap="round" />
+
+                        {/* Current Flow Direction Indicator Arrows on Front Loops */}
+                        {powerOn && (
+                          <path
+                            d={wirePolarity === 'normal' ? `M ${cx - 2} -8 L ${cx - 2} 12` : `M ${cx - 2} 12 L ${cx - 2} -8`}
+                            stroke="#ffffff"
+                            strokeWidth="2.5"
+                            markerEnd="url(#arrowGreen)"
+                          />
+                        )}
+                      </g>
+                    ))}
+
+                    {/* CIRCUIT APPARATUS BELOW COIL */}
+                    
+                    {/* 1. POWER SUPPLY BOX (Left) */}
+                    <g
+                      transform="translate(-160, 124)"
+                      onClick={() => setWirePolarity(p => p === 'normal' ? 'reversed' : 'normal')}
+                      className="cursor-pointer group"
+                    >
+                      <rect x="-56" y="-34" width="112" height="68" rx="10" fill="#334155" stroke="#1e293b" strokeWidth="2" className="group-hover:stroke-indigo-400 transition-all" />
+                      <text x="0" y="-15" fill="#f8fafc" fontSize="13" fontWeight="bold" textAnchor="middle">전원 장치</text>
+                      <circle cx="-24" cy="6" r="10" fill={wirePolarity === 'normal' ? '#ef4444' : '#3b82f6'} stroke="#ffffff" strokeWidth="2" />
+                      <text x="-24" y="11" fill="#ffffff" fontSize="13" fontWeight="extrabold" textAnchor="middle">{wirePolarity === 'normal' ? '+' : '-'}</text>
+                      <circle cx="24" cy="6" r="10" fill={wirePolarity === 'normal' ? '#3b82f6' : '#ef4444'} stroke="#ffffff" strokeWidth="2" />
+                      <text x="24" y="11" fill="#ffffff" fontSize="13" fontWeight="extrabold" textAnchor="middle">{wirePolarity === 'normal' ? '-' : '+'}</text>
+                      <text x="0" y="29" fill="#38bdf8" fontSize="10" fontWeight="bold" textAnchor="middle">👆 클릭: 극성 전환</text>
+                    </g>
+
+                    {/* 2. KNIFE SWITCH BOX (Center) */}
+                    <g
+                      transform="translate(0, 124)"
+                      onClick={() => setPowerOn(!powerOn)}
+                      className="cursor-pointer group"
+                    >
+                      <rect
+                        x="-50" y="-34" width="100" height="68" rx="10"
+                        fill={powerOn ? "#ecfdf5" : "#fff1f2"}
+                        stroke={powerOn ? "#10b981" : "#f43f5e"}
+                        strokeWidth="2.5"
+                        className="transition-all group-hover:scale-105"
+                      />
+                      <text x="0" y="-17" fill="#334155" fontSize="12" fontWeight="bold" textAnchor="middle">스위치 (클릭)</text>
+                      <circle cx="-30" cy="6" r="6" fill="#334155" />
+                      <circle cx="30" cy="6" r="6" fill="#334155" />
+                      <line
+                        x1="-30" y1="6"
+                        x2={powerOn ? "30" : "14"}
+                        y2={powerOn ? "6" : "-10"}
+                        stroke={powerOn ? "#10b981" : "#f43f5e"}
+                        strokeWidth="5" strokeLinecap="round"
+                        className="transition-all duration-300"
+                      />
+                      <text x="0" y="28" fill={powerOn ? "#047857" : "#be123c"} fontSize="11" fontWeight="extrabold" textAnchor="middle">
+                        {powerOn ? "⚡ ON (닫힘)" : "🔴 OFF (열림)"}
+                      </text>
+                    </g>
+
+                    {/* 3. DIGITAL AMMETER BOX (Right) */}
+                    <g transform="translate(160, 124)">
+                      <rect x="-50" y="-34" width="100" height="68" rx="10" fill="#1e293b" stroke="#0f172a" strokeWidth="2" />
+                      <rect x="-38" y="-28" width="76" height="24" rx="4" fill="#0284c7" />
+                      <text x="0" y="-10" fill="#ffffff" fontSize="14" fontFamily="monospace" fontWeight="extrabold" textAnchor="middle">
+                        {powerOn ? '1.50 A' : '0.00 A'}
+                      </text>
+                      <circle cx="-30" cy="6" r="6" fill="#cbd5e1" />
+                      <circle cx="30" cy="6" r="6" fill="#cbd5e1" />
+                      <text x="0" y="29" fill="#cbd5e1" fontSize="12" fontWeight="bold" textAnchor="middle">디지털 전류계</text>
+                    </g>
+
+                    {/* CIRCUIT WIRES */}
+                    {/* 전원 장치 왼쪽 단자 → 코일 왼쪽 */}
+                    <path d="M -184 130 C -230 128, -82 112, -82 35" fill="none" stroke={wirePolarity === 'normal' ? '#ef4444' : '#3b82f6'} strokeWidth="4" strokeLinecap="round" pointerEvents="none" />
+                    {/* 전류계 오른쪽 단자 → 코일 오른쪽 */}
+                    <path d="M 190 130 C 230 128, 82 112, 82 35" fill="none" stroke={wirePolarity === 'normal' ? '#3b82f6' : '#ef4444'} strokeWidth="4" strokeLinecap="round" pointerEvents="none" />
+                    {/* 추가: 전원 장치 오른쪽 단자 → 스위치 */}
+                    <path d="M -136 130 L -30 130" fill="none" stroke={wirePolarity === 'normal' ? '#3b82f6' : '#ef4444'} strokeWidth="4" strokeLinecap="round" pointerEvents="none" />
+                    {/* 추가: 스위치 → 전류계 왼쪽 단자 */}
+                    <path d="M 30 130 L 130 130" fill="none" stroke={wirePolarity === 'normal' ? '#3b82f6' : '#ef4444'} strokeWidth="4" strokeLinecap="round" pointerEvents="none" />
+
+                    {/* INTERACTIVE DRAGGABLE COMPASSES */}
+                    {compasses.map((pos) => {
+                      const angle = calculateCompassAngle(pos.x, pos.y);
+                      const isDragged = activeCompassId === pos.id;
+
+                      return (
+                        <g
+                          key={pos.id}
+                          transform={`translate(${pos.x}, ${pos.y})`}
+                          onMouseDown={(e) => handleCompassPointerDown(e, pos.id)}
+                          onTouchStart={(e) => handleCompassPointerDown(e, pos.id)}
+                          className="cursor-grab active:cursor-grabbing group"
+                        >
+                          {/* Drag Outer Glow */}
+                          <circle
+                            cx="0" cy="0" r={isDragged ? "25" : "22"}
+                            fill={isDragged ? "rgba(99, 102, 241, 0.25)" : "#ffffff"}
+                            stroke={isDragged ? "#4f46e5" : "#94a3b8"}
+                            strokeWidth={isDragged ? "3" : "2"}
+                            className="compass-shadow transition-all group-hover:stroke-indigo-500"
+                          />
+                          <circle cx="0" cy="0" r="19" fill="none" stroke="#f1f5f9" strokeWidth="1" />
+
+                          <line x1="0" y1="-17" x2="0" y2="17" stroke="#e2e8f0" strokeWidth="1" />
+                          <line x1="-17" y1="0" x2="18" y2="0" stroke="#e2e8f0" strokeWidth="1" />
+
+                          {/* Rotating Needle */}
+                          <g transform={`rotate(${angle})`} className="transition-transform duration-300 ease-out">
+                            {/* N-Pole (Red Needle) */}
+                            <polygon points="0,0 -5,-3 16,0 -5,3" fill="#ef4444" stroke="#dc2626" strokeWidth="0.5" />
+                            <text x="10" y="3" fill="#ffffff" fontSize="7" fontWeight="black" textAnchor="middle">N</text>
+
+                            {/* S-Pole (Blue Needle) */}
+                            <polygon points="0,0 5,-3 -16,0 5,3" fill="#3b82f6" stroke="#2563eb" strokeWidth="0.5" />
+                          </g>
+
+                          <circle cx="0" cy="0" r="3" fill="#475569" />
+
+                          {/* Compass drag handle indicator */}
+                          <circle cx="0" cy="-22" r="3" fill="#6366f1" opacity="0.6" className="group-hover:opacity-100" />
+                        </g>
+                      );
+                    })}
+                  </svg>
+                </div>
+
+                {/* Bottom Observation Result Card */}
+                <div className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 flex flex-col sm:flex-row items-center justify-between text-base text-slate-700 gap-2 mt-2">
+                  <div className="flex items-center gap-2">
+                    <span className="font-extrabold text-indigo-600 px-2 py-0.5 bg-indigo-50 rounded border border-indigo-100">
+                      📌 교과서 관찰 결과:
+                    </span>
+                    <span className="font-bold">
+                      {powerOn ? (
+                        wirePolarity === 'normal'
+                          ? '코일 오른쪽에 N극(빨간 바늘 가리킴), 왼쪽에 S극이 형성됩니다.'
+                          : '전선 극성을 바꾸자 코일 왼쪽에 N극, 오른쪽에 S극으로 자기장 방향이 반대가 되었습니다!'
+                      ) : (
+                        '스위치가 열려 전류가 흐르지 않으므로 나침반 바늘은 지구 북쪽(위쪽)을 가리킵니다.'
+                      )}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* 오른손 법칙 그림 */}
+              <div className="lg:col-span-3 bg-white rounded-2xl p-5 shadow-sm border border-slate-200">
+                <h2 className="text-xl font-extrabold text-slate-800 border-b border-slate-100 pb-3 mb-4 flex items-center gap-2">
+                  <span className="w-2.5 h-5 bg-indigo-600 rounded-full"></span>
+                  ✋ 오른손 법칙으로 확인하기
+                </h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
+                  {(() => {
+                    const sg = wirePolarity === 'normal' ? 1 : -1;
+                    const skin = '#f7d3b3', skinLine = '#c9996b';
+                    return (
+                      <svg viewBox="0 0 360 240" className="w-full max-h-[360px] select-none">
+                        <defs>
+                          <marker id="handArrR" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="16" markerHeight="16" markerUnits="userSpaceOnUse" orient="auto">
+                            <path d="M0 0 L10 5 L0 10 z" fill="#ef4444" />
+                          </marker>
+                          <marker id="handArrG" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="16" markerHeight="16" markerUnits="userSpaceOnUse" orient="auto">
+                            <path d="M0 0 L10 5 L0 10 z" fill="#10b981" />
+                          </marker>
+                        </defs>
+                        <g transform="translate(180,120)">
+                          <g transform={wirePolarity === 'normal' ? '' : 'rotate(180)'}>
+                            {/* 팔 */}
+                            <rect x="-22" y="-100" width="44" height="46" rx="10" fill={skin} stroke={skinLine} strokeWidth="2" />
+                            {/* 코일 */}
+                            <rect x="-66" y="-34" width="132" height="68" rx="8" fill="#e2e8f0" stroke="#94a3b8" strokeWidth="2" />
+                            {[-54, -36, -18, 0, 18, 36, 54].map((x) => (
+                              <path key={x} d={`M ${x - 5} -34 L ${x + 5} 34`} stroke="#b45309" strokeWidth="7" strokeLinecap="round" />
+                            ))}
+                            {/* 네 손가락 */}
+                            {[-46, -23, 0, 23].map((x) => (
+                              <g key={x}>
+                                <rect x={x} y="-50" width="21" height="96" rx="10.5" fill={skin} stroke={skinLine} strokeWidth="2" />
+                                <path d={`M ${x + 3} -4 L ${x + 18} -4 M ${x + 3} 20 L ${x + 18} 20`} stroke={skinLine} strokeWidth="1.5" />
+                                <ellipse cx={x + 10.5} cy="36" rx="6" ry="5" fill="#fde7d3" stroke={skinLine} strokeWidth="1" />
+                              </g>
+                            ))}
+                            {/* 손바닥 + 엄지 */}
+                            <rect x="40" y="-62" width="76" height="22" rx="11" fill={skin} stroke={skinLine} strokeWidth="2" />
+                            <rect x="-52" y="-62" width="104" height="34" rx="14" fill={skin} stroke={skinLine} strokeWidth="2" />
+                            <rect x="42" y="-60" width="14" height="18" fill={skin} />
+                            <rect x="-20" y="-66" width="40" height="12" fill={skin} />
+                            <ellipse cx="104" cy="-51" rx="7" ry="6" fill="#fde7d3" stroke={skinLine} strokeWidth="1" />
+                            {/* 화살표: 전류(빨강, 네 손가락) / 자기장(초록, 엄지) */}
+                            <line x1="-76" y1="-30" x2="-76" y2="38" stroke="#ef4444" strokeWidth="5" markerEnd="url(#handArrR)" />
+                            <line x1="120" y1="-51" x2="152" y2="-51" stroke="#10b981" strokeWidth="5" markerEnd="url(#handArrG)" />
+                          </g>
+                          {/* 글씨는 뒤집히지 않게 */}
+                          <text x={sg * -88} y={-4} textAnchor={sg === 1 ? 'end' : 'start'} fill="#dc2626" fontSize="15" fontWeight="bold">전류의 방향</text>
+                          <text x={sg * -88} y={14} textAnchor={sg === 1 ? 'end' : 'start'} fill="#dc2626" fontSize="13" fontWeight="bold">(네 손가락)</text>
+                          <text x={sg * 112} y={sg * -12 - 6} textAnchor="middle" fill="#059669" fontSize="15" fontWeight="bold">자기장 방향</text>
+                          <text x={sg * 112} y={sg * -12 + 12} textAnchor="middle" fill="#059669" fontSize="13" fontWeight="bold">(엄지, N극)</text>
+                        </g>
+                      </svg>
+                    );
+                  })()}
+
+                  <div className="space-y-3">
+                    <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-lg text-amber-900 leading-relaxed">
+                      오른손 <strong>네 손가락</strong>을 <strong className="text-red-600">전류의 방향</strong>으로 감싸쥘 때,
+                      펼친 <strong>엄지손가락</strong>이 가리키는 방향이 코일 내부의 <strong className="text-emerald-700">자기장 방향(N극)</strong>입니다.
+                    </div>
+                    <ul className="text-lg text-slate-700 space-y-2 font-semibold">
+                      <li>🔴 전류의 방향(네 손가락): 코일 앞면에서 <span className="text-red-600">{wirePolarity === 'normal' ? '아래쪽 ↓' : '위쪽 ↑'}</span></li>
+                      <li>🟢 자기장의 방향(엄지): <span className="text-emerald-700">{wirePolarity === 'normal' ? '오른쪽 →' : '← 왼쪽'}</span> (코일의 {wirePolarity === 'normal' ? '오른쪽' : '왼쪽'}이 N극)</li>
+                      <li className="text-base text-slate-500">
+                        {powerOn ? '⚡ 스위치가 닫혀 전류가 흐르는 중입니다.' : '스위치가 열려 있어요. 전류가 흐른다고 생각하고 방향을 확인해 보세요.'}
+                      </li>
+                    </ul>
+                    <button
+                      onClick={() => setWirePolarity(p => p === 'normal' ? 'reversed' : 'normal')}
+                      className="w-full py-3 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-lg transition-all shadow-sm"
+                    >
+                      🔄 전류 방향 바꾸기
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB 2: EXPERIMENT 2 - CURRENT STRENGTH & PAPERCLIPS */}
+          {activeTab === 'exp2' && (
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 flex-1">
+              {/* Controls */}
+              <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex flex-col justify-between space-y-6">
+                <div>
+                  <h2 className="text-xl font-extrabold text-slate-800 border-b border-slate-100 pb-3 mb-4 flex items-center gap-2">
+                    <span className="w-2.5 h-5 bg-indigo-600 rounded-full"></span>
+                    전류 세기 조절기
+                  </h2>
+
+                  {/* Power Switch */}
+                  <div className="mb-5 bg-slate-50 p-4 rounded-xl border border-slate-200">
+                    <label className="text-base font-bold text-slate-700 block mb-2">스위치 작동</label>
+                    <button
+                      onClick={() => setExp2PowerOn(!exp2PowerOn)}
+                      className={`w-full py-3 px-4 rounded-xl font-bold text-lg transition-all flex items-center justify-center gap-2 shadow-sm ${
+                        exp2PowerOn
+                          ? 'bg-emerald-500 text-white hover:bg-emerald-600 ring-4 ring-emerald-100'
+                          : 'bg-rose-500 text-white hover:bg-rose-600 ring-4 ring-rose-100'
+                      }`}
+                    >
+                      {exp2PowerOn ? '스위치 닫힘 (전류 ON)' : '스위치 열림 (전류 OFF)'}
+                    </button>
+                  </div>
+
+                  {/* Ampere Slider */}
+                  <div className="mb-5 bg-slate-50 p-4 rounded-xl border border-slate-200">
+                    <div className="flex justify-between items-center mb-2">
+                      <label className="text-base font-bold text-slate-700">전류의 세기 (A)</label>
+                      <span className="text-indigo-600 font-black text-2xl px-3 py-0.5 bg-indigo-50 rounded-lg border border-indigo-100">
+                        {exp2PowerOn ? currentAmpere.toFixed(1) : '0.0'} A
+                      </span>
+                    </div>
+
+                    <input
+                      type="range"
+                      min="0.5"
+                      max="3.0"
+                      step="0.5"
+                      value={currentAmpere}
+                      onChange={(e) => setCurrentAmpere(parseFloat(e.target.value))}
+                      disabled={!exp2PowerOn}
+                      className="w-full h-2.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-indigo-600 disabled:opacity-40"
+                    />
+
+                    <div className="flex justify-between text-sm text-slate-400 mt-2 font-bold">
+                      <span>약하게 (0.5A)</span>
+                      <span>보통 (1.5A)</span>
+                      <span>강하게 (3.0A)</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-sky-50 border border-sky-200 rounded-xl p-4 text-base text-sky-900 space-y-2 leading-relaxed">
+                  <div className="font-extrabold text-sky-950 flex items-center gap-1">
+                    💡 교과서 결론 도출
+                  </div>
+                  <p>
+                    • 코일에 흐르는 <strong>전류의 세기가 세질수록</strong> 코일 주위에 생기는 자기장의 세기가 세집니다.
+                  </p>
+                  <p>
+                    • 자기장의 세기가 세지면 실에 매달린 클립이 받는 <strong>자기력이 증가하여 코일 쪽으로 더 많이 끌려옵니다.</strong>
+                  </p>
+                </div>
+              </div>
+
+              {/* Clip Attracted Visual Canvas */}
+              <div className="lg:col-span-2 bg-white rounded-2xl p-5 shadow-sm border border-slate-200 flex flex-col justify-between items-center relative overflow-hidden">
+                <div className="w-full flex items-center justify-between text-base font-bold mb-2">
+                  <span className="text-slate-700 flex items-center gap-1.5 bg-amber-50 px-3 py-1 rounded-full border border-amber-200">
+                    <span>👆</span>
+                    <span>그림 속 스위치를 누르거나 (+)/(-) 버튼을 눌러 전류를 바꿔보세요!</span>
+                  </span>
+                  <span className="text-indigo-600 bg-indigo-50 px-3 py-1 rounded-full border border-indigo-100 font-extrabold">
+                    자기력 크기: {exp2PowerOn ? (currentAmpere * 33.3).toFixed(0) : 0}%
+                  </span>
+                </div>
+
+                {/* Physics Stage */}
+                <div className="w-full flex-1 flex items-center justify-center my-2 min-h-[400px]">
+                  <svg viewBox="-250 -160 500 320" className="w-full h-full max-h-[460px] select-none">
+                    <defs>
+                      <marker id="arrowRed" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                        <path d="M 0 0 L 10 5 L 0 10 z" fill="#ef4444" />
+                      </marker>
+                    </defs>
+
+                    {/* Stand Structure */}
+                    <rect x="-180" y="-140" width="10" height="250" fill="#64748b" rx="2" />
+                    <rect x="-220" y="105" width="90" height="15" fill="#475569" rx="3" />
+                    <rect x="-180" y="-140" width="120" height="8" fill="#64748b" rx="2" />
+
+                    {/* Coil Setup */}
+                    <rect x="-20" y="20" width="160" height="80" fill="#e2e8f0" stroke="#cbd5e1" strokeWidth="2" rx="6" />
+
+                    {/* Solenoid loops */}
+                    {[-10, 20, 50, 80, 110].map((cx, idx) => (
+                      <g key={idx}>
+                        <path d={`M ${cx} 20 C ${cx - 5} -30, ${cx + 25} -30, ${cx + 20} 20`} fill="none" stroke="#b45309" strokeWidth="9" strokeLinecap="round" />
+                      </g>
+                    ))}
+
+                    {/* Magnetic force field glow */}
+                    {exp2PowerOn && (
+                      <g className="animate-pulse">
+                        <circle cx="-20" cy="60" r={20 + currentAmpere * 12} fill="none" stroke="#6366f1" strokeWidth="2" opacity="0.4" />
+                        <circle cx="-20" cy="60" r={35 + currentAmpere * 16} fill="none" stroke="#6366f1" strokeWidth="1.5" opacity="0.2" />
+                      </g>
+                    )}
+
+                    {/* Interactive Canvas Ampere Controller */}
+                    <g transform="translate(60, 115)">
+                      <rect x="-70" y="-22" width="140" height="44" rx="8" fill="#1e293b" stroke="#334155" strokeWidth="2" />
+                      <text x="0" y="5" fill="#38bdf8" fontSize="12" fontWeight="bold" textAnchor="middle">전류: {exp2PowerOn ? currentAmpere.toFixed(1) : 0.0} A</text>
+
+                      {/* Ampere Minus Button */}
+                      <g
+                        onClick={() => setCurrentAmpere(a => Math.max(0.5, a - 0.5))}
+                        className="cursor-pointer group"
+                      >
+                        <circle cx="-50" cy="0" r="12" fill="#475569" className="group-hover:fill-indigo-600" />
+                        <text x="-50" y="5" fill="#ffffff" fontSize="16" fontWeight="black" textAnchor="middle">-</text>
+                      </g>
+
+                      {/* Ampere Plus Button */}
+                      <g
+                        onClick={() => setCurrentAmpere(a => Math.min(3.0, a + 0.5))}
+                        className="cursor-pointer group"
+                      >
+                        <circle cx="50" cy="0" r="12" fill="#475569" className="group-hover:fill-indigo-600" />
+                        <text x="50" y="5" fill="#ffffff" fontSize="16" fontWeight="black" textAnchor="middle">+</text>
+                      </g>
+                    </g>
+
+                    {/* Interactive Switch Box on Canvas */}
+                    <g
+                      transform="translate(-100, 115)"
+                      onClick={() => setExp2PowerOn(!exp2PowerOn)}
+                      className="cursor-pointer group"
+                    >
+                      <rect x="-40" y="-22" width="80" height="44" rx="8" fill={exp2PowerOn ? "#ecfdf5" : "#fff1f2"} stroke={exp2PowerOn ? "#10b981" : "#f43f5e"} strokeWidth="2" />
+                      <text x="0" y="-5" fill="#334155" fontSize="12" fontWeight="bold" textAnchor="middle">스위치</text>
+                      <text x="0" y="15" fill={exp2PowerOn ? "#047857" : "#be123c"} fontSize="14" fontWeight="black" textAnchor="middle">
+                        {exp2PowerOn ? "ON" : "OFF"}
+                      </text>
+                    </g>
+
+                    {/* Hanging String & Paperclip */}
+                    {(() => {
+                      const maxAngle = 44;
+                      const tiltAngle = exp2PowerOn ? (currentAmpere / 3.0) * maxAngle : 0;
+                      const anchorX = -80;
+                      const anchorY = -132;
+                      const stringLength = 170;
+
+                      const rad = (tiltAngle * Math.PI) / 180;
+                      const clipX = anchorX + stringLength * Math.sin(rad);
+                      const clipY = anchorY + stringLength * Math.cos(rad);
+
+                      return (
+                        <g>
+                          {/* Thread */}
+                          <line x1={anchorX} y1={anchorY} x2={clipX} y2={clipY} stroke="#94a3b8" strokeWidth="2" strokeDasharray="2 2" />
+
+                          {/* Paperclip */}
+                          <g transform={`translate(${clipX}, ${clipY}) rotate(${-tiltAngle})`}>
+                            <path
+                              d="M -6 -18 L -6 12 C -6 20, 6 20, 6 12 L 6 -12 C 6 -16, -2 -16, -2 -12 L -2 8"
+                              fill="none"
+                              stroke="#334155"
+                              strokeWidth="3.5"
+                              strokeLinecap="round"
+                            />
+                            <text x="12" y="5" fill="#475569" fontSize="14" fontWeight="extrabold">
+                              클립
+                            </text>
+                          </g>
+
+                          {/* Force Vector Arrow */}
+                          {exp2PowerOn && (
+                            <g transform={`translate(${clipX}, ${clipY})`}>
+                              <line
+                                x1="0"
+                                y1="0"
+                                x2={currentAmpere * 22}
+                                y2="0"
+                                stroke="#ef4444"
+                                strokeWidth="3.5"
+                                markerEnd="url(#arrowRed)"
+                              />
+                              <text x={currentAmpere * 12} y="-8" fill="#ef4444" fontSize="14" fontWeight="black">
+                                자기력 F
+                              </text>
+                            </g>
+                          )}
+                        </g>
+                      );
+                    })()}
+
+                    {/* Table Surface */}
+                    <line x1="-240" y1="100" x2="240" y2="100" stroke="#cbd5e1" strokeWidth="3" />
+                  </svg>
+                </div>
+
+                {/* Callout */}
+                <div className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 flex items-center justify-between text-base sm:text-lg">
+                  <span className="font-extrabold text-slate-700">📌 클립의 움직임 관찰:</span>
+                  <span className="font-black text-indigo-600">
+                    {!exp2PowerOn
+                      ? '스위치가 꺼져 있어 클립이 연직 방향(수직 아래)으로 정지해 있습니다.'
+                      : currentAmpere <= 1.0
+                      ? '약한 전류: 클립이 코일 방향으로 약하게 끌려옵니다.'
+                      : currentAmpere <= 2.0
+                      ? '보통 전류: 클립이 코일 쪽으로 뚜렷하게 당겨집니다.'
+                      : '강한 전류: 강력한 자기력이 작용하여 클립이 크게 끌려옵니다!'}
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB 3: QUIZ & CONCEPT SUMMARY */}
+          {activeTab === 'quiz' && (
+            <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 flex-1 flex flex-col space-y-6">
+              <div className="border-b border-slate-100 pb-4 flex items-center justify-between">
+                <div>
+                  <h2 className="text-2xl font-black text-slate-800 flex items-center gap-2">
+                    <span>📝</span> 중학교 2학년 과학 개념 확인 & 문제 풀기
+                  </h2>
+                  <p className="text-base sm:text-lg text-slate-500 mt-1">
+                    가상실험에서 관찰한 내용을 바탕으로 문제를 풀고 학습 이해도를 점검해 보세요.
+                  </p>
+                </div>
+                {submitted && (
+                  <div className="px-4 py-2 bg-indigo-50 border border-indigo-200 rounded-xl text-center">
+                    <span className="text-base text-indigo-600 font-bold block">최종 점수</span>
+                    <span className="text-2xl font-black text-indigo-700">{score} / {quizQuestions.length} 점</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Questions List */}
+              <div className="space-y-6">
+                {quizQuestions.map((q, idx) => (
+                  <div key={q.id} className="bg-slate-50 p-5 rounded-2xl border border-slate-200">
+                    <h3 className="font-extrabold text-slate-800 text-lg sm:text-xl mb-3 leading-snug">
+                      {q.question}
+                    </h3>
+
+                    <div className="space-y-2">
+                      {q.options.map((opt, optIdx) => {
+                        const isSelected = quizAnswers[q.id] === optIdx;
+                        let btnStyle = "bg-white text-slate-700 border-slate-200 hover:bg-slate-100";
+
+                        if (submitted) {
+                          if (opt.correct) {
+                            btnStyle = "bg-emerald-500 text-white border-emerald-500 font-bold";
+                          } else if (isSelected) {
+                            btnStyle = "bg-rose-500 text-white border-rose-500 font-bold";
+                          }
+                        } else if (isSelected) {
+                          btnStyle = "bg-indigo-600 text-white border-indigo-600 font-bold shadow-sm";
+                        }
+
+                        return (
+                          <button
+                            key={optIdx}
+                            onClick={() => !submitted && handleQuizSelect(q.id, optIdx)}
+                            className={`w-full text-left p-3 rounded-xl text-base sm:text-lg border transition-all flex items-center gap-3 ${btnStyle}`}
+                          >
+                            <span className={`w-7 h-7 shrink-0 rounded-full border flex items-center justify-center text-base font-bold ${
+                              isSelected ? 'border-white bg-white/20' : 'border-slate-300'
+                            }`}>
+                              {optIdx + 1}
+                            </span>
+                            <span>{opt.text}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    {/* Explanation showing after submit */}
+                    {submitted && (
+                      <div className="mt-3 p-3 bg-white rounded-xl border border-slate-200 text-base text-slate-600 leading-relaxed">
+                        <strong className="text-indigo-600 block mb-0.5">💡 풀이 해설:</strong>
+                        {q.explanation}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              {/* Submit & Reset Buttons */}
+              <div className="pt-2">
+                {!submitted ? (
+                  <button
+                    onClick={calculateScore}
+                    disabled={Object.values(quizAnswers).some(val => val === null)}
+                    className="w-full py-4 bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-300 text-white font-extrabold text-xl rounded-xl transition-all shadow-md shadow-indigo-100"
+                  >
+                    정답 및 해설 채점하기
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => {
+                      setSubmitted(false);
+                      setQuizAnswers({ q1: null, q2: null, q3: null, q4: null, q5: null });
+                    }}
+                    className="w-full py-4 bg-slate-800 hover:bg-slate-900 text-white font-extrabold text-xl rounded-xl transition-all shadow-md"
+                  >
+                    다시 풀어보기
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Footer */}
+          <footer className="mt-8 text-center text-base text-slate-400 font-medium pb-4">
+            중학교 2학년 과학 | 전기와 자기 - 전류가 흐르는 코일 주위의 자기장 가상실험
+          </footer>
+        </div>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<CoilMagnetExperiment />);
+  </script>
+</body>
+</html>
