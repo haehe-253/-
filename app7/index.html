@@ -1,0 +1,1093 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>자기장 안에서 전류가 흐르는 코일이 받는 힘의 특성 추리하기</title>
+<style>
+  :root{
+    --ink:#0f172a; --ink2:#334155; --muted:#64748b; --line:#bfdcf2;
+    --blue:#2563eb; --blue-d:#1e3a8a; --blue-bg:#eff6ff;
+    --green:#059669; --green-bg:#ecfdf5; --red:#dc2626; --red-bg:#fef2f2;
+    --amber:#b45309; --amber-bg:#fffbeb; --amber-line:#fcd34d;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{
+    font-family:'Pretendard','Noto Sans KR','Apple SD Gothic Neo','Malgun Gothic',system-ui,sans-serif;
+    font-size:20px; line-height:1.5;
+    background:linear-gradient(135deg,#e0f2fe 0%,#f0fdf4 100%);
+    color:var(--ink); min-height:100vh; display:flex; flex-direction:column;
+    -webkit-tap-highlight-color:transparent;
+  }
+  button{font-family:inherit;touch-action:manipulation}
+
+  /* ---------- header ---------- */
+  header{background:linear-gradient(90deg,#0284c7,#2563eb 55%,#4f46e5);color:#fff;padding:16px 24px;box-shadow:0 8px 24px rgba(37,99,235,.25)}
+  .hd{max-width:1500px;margin:0 auto;display:flex;flex-wrap:wrap;gap:12px;justify-content:space-between;align-items:center}
+  .chip{display:inline-block;background:rgba(255,255,255,.25);padding:4px 14px;border-radius:999px;font-weight:800;font-size:15px}
+  h1{margin:6px 0 0;font-size:clamp(24px,3vw,34px);font-weight:900;letter-spacing:-.02em;line-height:1.25}
+  .score{background:#fff;color:var(--blue-d);font-weight:900;font-size:22px;padding:10px 20px;border-radius:999px;box-shadow:0 6px 16px rgba(15,23,42,.2);white-space:nowrap}
+
+  .wrap{max-width:1500px;width:100%;margin:0 auto;padding:16px 16px 28px;flex:1}
+  .goal{display:flex;gap:12px;align-items:center;background:#fff;border:2px solid var(--line);border-radius:18px;padding:12px 18px;font-weight:800;font-size:21px;margin-bottom:14px}
+  .goal .lab{background:var(--blue);color:#fff;border-radius:10px;padding:2px 12px;font-size:17px;white-space:nowrap}
+
+  /* ---------- step bar ---------- */
+  .bar6{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px;margin:0 0 16px;padding:0;list-style:none}
+  .sb{all:unset;box-sizing:border-box;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px;width:100%;min-height:76px;padding:8px 4px;border-radius:16px;border:3px solid #dbe5ee;background:#fff;text-align:center;font-weight:800;font-size:17px;line-height:1.25;color:var(--muted)}
+  .sb .no{display:inline-grid;place-items:center;width:32px;height:32px;border-radius:50%;background:#e2e8f0;color:#475569;font-weight:900;font-size:18px}
+  .sb:focus-visible{outline:4px solid #93c5fd}
+  .sb.active{border-color:var(--blue);background:var(--blue-bg);color:var(--blue-d);box-shadow:0 6px 16px rgba(37,99,235,.2)}
+  .sb.active .no{background:var(--blue);color:#fff}
+  .sb.done{border-color:#86efac;background:var(--green-bg);color:#065f46}
+  .sb.done .no{background:var(--green);color:#fff}
+  .sb.locked{cursor:not-allowed;opacity:.5}
+
+  /* ---------- layout ---------- */
+  .layout{display:grid;grid-template-columns:minmax(0,1fr);gap:18px;align-items:start}
+  @media (min-width:1024px){
+    .layout{grid-template-columns:minmax(0,1.7fr) minmax(0,1fr)}
+    .stagecol{position:sticky;top:10px}
+  }
+  .card{background:#fff;border:2px solid var(--line);border-radius:22px;box-shadow:0 14px 34px rgba(15,23,42,.08);padding:18px}
+
+  /* ---------- stage (SVG 가상실험실) ---------- */
+  .stage{position:relative;width:100%;aspect-ratio:16/10;background:#dbeafe;border-radius:20px;overflow:hidden;border:3px solid var(--line)}
+  .stage>svg{position:absolute;inset:0;width:100%;height:100%;display:block;user-select:none;-webkit-user-select:none}
+  svg text{font-family:'Pretendard','Noto Sans KR','Apple SD Gothic Neo','Malgun Gothic',system-ui,sans-serif}
+  .halo{paint-order:stroke;stroke:#fff;stroke-width:7px;stroke-linejoin:round}
+  .live{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-bottom:10px;min-height:42px}
+  .pill{background:rgba(255,255,255,.94);border:2px solid var(--line);color:var(--blue-d);font-weight:900;font-size:17px;padding:5px 14px;border-radius:999px;box-shadow:0 4px 12px rgba(15,23,42,.15)}
+  .pill.on{background:var(--red);border-color:var(--red);color:#fff}
+  .tabs{display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap}
+  .tabs button{border:3px solid #dbe5ee;background:#fff;border-radius:14px;font-weight:900;font-size:18px;padding:10px 16px;cursor:pointer;color:var(--ink2)}
+  .tabs button.on{border-color:var(--blue);background:var(--blue-bg);color:var(--blue-d)}
+
+  /* hotspots inside svg */
+  .hs{cursor:pointer;outline:none}
+  .hs .ring{fill:rgba(37,99,235,.2);stroke:#fff;stroke-width:5;transform-box:fill-box;transform-origin:center;animation:ping 1.5s infinite}
+  .hs .ringo{fill:none;stroke:#2563eb;stroke-width:4}
+  .hs.swc .ringo{stroke:#dc2626} .hs.swc .ring{fill:rgba(220,38,38,.2)}
+  .hs .bub rect{fill:#2563eb} .hs.swc .bub rect{fill:#dc2626}
+  .hs .bub text{fill:#fff;font-weight:900;font-size:25px;text-anchor:middle}
+  .hs.off .ring,.hs.off .ringo,.hs.off .bub{opacity:0}
+  .hs:focus-visible .ringo{stroke-width:8}
+  @keyframes ping{0%,100%{transform:scale(.92)}50%{transform:scale(1.1)}}
+  .fx{fill:none;stroke:#f59e0b;stroke-width:6;transform-box:fill-box;transform-origin:center;animation:pop .55s ease-out forwards;pointer-events:none}
+  @keyframes pop{from{transform:scale(.3);opacity:1}to{transform:scale(2.2);opacity:0}}
+  .flow{fill:none;stroke:#f59e0b;stroke-width:7;stroke-dasharray:4 14;stroke-linecap:round;animation:dash .8s linear infinite}
+  .flow.ccw{animation-direction:reverse}
+  @keyframes dash{to{stroke-dashoffset:-36}}
+  .cf{fill:none;stroke:#fffbe0;stroke-width:5;stroke-dasharray:3 12;stroke-linecap:round;animation:dash2 .7s linear infinite}
+  @keyframes dash2{to{stroke-dashoffset:-30}}
+  .cfl{fill:none;stroke:#fde047;stroke-width:4;stroke-dasharray:3 9;stroke-linecap:round}
+  .cfl2{fill:none;stroke:#fffbe0;stroke-width:2.6;stroke-dasharray:2 7;stroke-linecap:round}
+
+  /* ---------- buttons ---------- */
+  .acts{display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin-top:14px}
+  .btn{border:0;cursor:pointer;font-weight:900;font-size:23px;padding:16px 26px;min-height:64px;border-radius:18px;box-shadow:0 6px 14px rgba(15,23,42,.16);transition:.12s}
+  .btn:active{transform:translateY(1px)}
+  .btn.primary{background:var(--blue);color:#fff}
+  .btn.sw{background:#be123c;color:#fff}
+  .btn.sw.on{background:#fff;color:#be123c;box-shadow:inset 0 0 0 4px #be123c,0 6px 14px rgba(15,23,42,.16)}
+  .btn.ghost{background:#e2e8f0;color:var(--ink);box-shadow:none}
+  .btn.tool{background:#fff;color:var(--ink2);box-shadow:inset 0 0 0 3px #cbd5e1;font-size:18px;padding:10px 16px;min-height:52px}
+  .btn.tool.on{background:#eef2ff;color:#3730a3;box-shadow:inset 0 0 0 3px #818cf8}
+  .btn[disabled]{opacity:.4;cursor:not-allowed}
+  .seg{display:inline-flex;background:#e2e8f0;border-radius:18px;padding:5px;gap:5px;max-width:100%}
+  .seg button{flex:1;border:0;background:transparent;font-weight:900;font-size:20px;padding:14px 18px;min-height:56px;border-radius:14px;cursor:pointer;color:var(--ink2)}
+  .seg button.on{background:#fff;color:var(--blue-d);box-shadow:0 3px 8px rgba(15,23,42,.18)}
+  .grow{flex:1}
+
+  /* ---------- text panel ---------- */
+  .panel{display:flex;flex-direction:column;gap:14px}
+  .task .head{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px}
+  .tag{display:inline-block;font-weight:900;font-size:17px;padding:3px 14px;border-radius:999px;background:var(--blue);color:#fff}
+  .tag.obsv{background:#0f766e}
+  .tag.ask{background:#7c3aed}
+  .task .txt{font-size:25px;font-weight:900;line-height:1.5;letter-spacing:-.01em}
+  .task .how{margin-top:10px;font-size:20px;font-weight:700;color:var(--ink2);background:#f1f5f9;border-radius:14px;padding:10px 14px}
+  .safety{margin-top:10px;background:var(--amber-bg);border:3px solid var(--amber-line);border-radius:14px;padding:10px 14px;font-weight:800;font-size:19px;color:#78350f}
+  .obs{background:var(--amber-bg);border:3px solid var(--amber-line);border-radius:20px;padding:14px 18px}
+  .obs h3{margin:0 0 4px;font-size:16px;font-weight:900;letter-spacing:.04em;color:var(--amber)}
+  .obs p{margin:0;font-size:21px;font-weight:800;line-height:1.55;color:#451a03}
+  .hint{font-size:20px;font-weight:800;color:var(--muted);background:#f1f5f9;border-radius:16px;padding:14px 16px}
+
+  .q{background:#fff;border:3px solid var(--line);border-radius:20px;padding:16px}
+  .q h3{margin:8px 0 12px;font-size:23px;font-weight:900;line-height:1.5}
+  .opts{display:grid;gap:10px}
+  .opt{all:unset;box-sizing:border-box;cursor:pointer;display:block;width:100%;min-height:64px;padding:14px 16px;border-radius:16px;border:3px solid #e2e8f0;background:#f8fafc;font-weight:800;font-size:21px;line-height:1.45;touch-action:manipulation}
+  .opt:active{background:var(--blue-bg)}
+  .opt:focus-visible{outline:4px solid #93c5fd}
+  .opt.wrong{border-color:#fca5a5;background:var(--red-bg);color:#991b1b;cursor:default}
+  .opt.right{border-color:#6ee7b7;background:var(--green-bg);color:#065f46;cursor:default}
+  .opt.dim{opacity:.5;cursor:default}
+  .fb{margin-top:12px;font-weight:800;font-size:20px;line-height:1.55;border-radius:14px;padding:12px 14px}
+  .fb.no{background:var(--red-bg);color:#991b1b}
+  .fb.ok{background:var(--green-bg);color:#065f46}
+  .fb b{display:inline-block;background:var(--green);color:#fff;border-radius:8px;padding:0 10px;margin-right:6px}
+
+  .rule{background:#fff;border:3px solid #c4b5fd;border-radius:20px;padding:14px 16px}
+  .rule h3{margin:0 0 6px;font-size:22px;font-weight:900;color:#5b21b6}
+  .rule .lead{margin:0 0 10px;font-size:19px;font-weight:700;color:var(--ink2);line-height:1.5}
+  .rule svg{width:100%;height:auto;display:block;background:#f5f3ff;border-radius:14px}
+  .rule .rows{display:grid;gap:8px;margin-top:10px}
+  .rule .row{display:flex;gap:10px;align-items:center;border-radius:14px;padding:9px 12px;font-weight:800;font-size:20px;line-height:1.4;border:3px solid}
+  .rule .row .ic{font-size:30px;line-height:1}
+  .rule .row small{display:block;font-size:16px;font-weight:700;opacity:.8}
+  .rule .r1{background:#fff7ed;border-color:#fdba74;color:#7c2d12}
+  .rule .r2{background:#f5f3ff;border-color:#c4b5fd;color:#4c1d95}
+  .rule .r3{background:#ecfdf5;border-color:#6ee7b7;color:#065f46}
+  .rule .r4{background:#fef9c3;border-color:#fde047;color:#713f12}
+  .rule .rows + svg,.rule svg + .rows{margin-top:10px}
+  .cmp{border:3px solid var(--line);background:#fff;border-radius:20px;overflow:hidden}
+  .cmp > svg{display:block;width:100%;height:auto;cursor:zoom-in}
+  .cmp .cap{padding:12px 16px;font-weight:800;font-size:20px;line-height:1.5}
+
+  .self{background:linear-gradient(135deg,#ecfdf5,#eff6ff);border:3px solid #86efac;border-radius:20px;padding:16px}
+  .self h3{margin:0 0 10px;font-size:23px;font-weight:900;color:#065f46}
+  .self .it{margin-top:12px;font-weight:800;font-size:20px;line-height:1.5}
+  .self .tg{margin-right:6px}
+  .lv{display:flex;gap:8px;margin-top:8px}
+  .lv button{flex:1;min-height:56px;border:3px solid #cbd5e1;background:#fff;border-radius:14px;font-weight:900;font-size:21px;cursor:pointer}
+  .lv button.on{border-color:var(--green);background:var(--green);color:#fff}
+  .finish{background:#fff7ed;border:3px solid #fdba74;border-radius:20px;padding:16px;font-weight:900;font-size:23px;line-height:1.55;text-align:center;color:#9a3412}
+
+  .prog{position:relative;background:#fff;border:3px solid var(--line);border-radius:16px;padding:12px 16px 16px;font-weight:900;font-size:21px;overflow:hidden}
+  .prog b{color:var(--blue-d)}
+  .prog i{position:absolute;left:0;bottom:0;height:8px;background:var(--green);transition:width .3s}
+  .okbox{background:var(--green-bg);border:3px solid #86efac;border-radius:16px;padding:14px 16px;font-weight:800;font-size:20px;line-height:1.55;color:#065f46}
+  .nav{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}
+  .rec h3{margin:0 0 10px;font-size:21px;font-weight:900}
+  table{width:100%;border-collapse:collapse;font-size:19px}
+  th,td{padding:10px 12px;border:2px solid #e2e8f0;text-align:left;font-weight:800}
+  th{background:#f1f5f9;font-size:17px;color:#475569}
+  td.empty{color:#cbd5e1}
+  td.yes{background:var(--green-bg);color:#065f46}
+  footer{background:rgba(255,255,255,.9);border-top:1px solid var(--line);text-align:center;padding:14px;font-weight:800;color:var(--ink2);font-size:16px}
+
+  #lb{position:fixed;inset:0;background:rgba(15,23,42,.92);z-index:50;display:none;align-items:center;justify-content:center;padding:12px}
+  #lb.open{display:flex}
+  #lb button{position:absolute;top:12px;right:12px;font-size:24px;font-weight:900;border:0;border-radius:14px;padding:12px 20px;background:#fff;cursor:pointer}
+
+  @media (max-width:700px){
+    body{font-size:19px} .sb{font-size:15px;min-height:70px} .sb .no{width:28px;height:28px;font-size:16px}
+    .task .txt{font-size:23px} .btn{font-size:21px;padding:14px 18px}
+    .goal{font-size:18px;flex-wrap:wrap}
+  }
+  @media (prefers-reduced-motion:reduce){.hs .ring,.flow,.cf{animation:none}}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <defs>
+    <linearGradient id="gWall" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#cfe8fb"/><stop offset="1" stop-color="#eef7ff"/></linearGradient>
+    <linearGradient id="gTable" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f6ecd9"/><stop offset="1" stop-color="#e8d6b4"/></linearGradient>
+    <linearGradient id="gBoard" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f19a3a"/><stop offset="1" stop-color="#c2610f"/></linearGradient>
+    <linearGradient id="gMetal" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#8e9aa7"/><stop offset=".45" stop-color="#f4f7fa"/><stop offset="1" stop-color="#8e9aa7"/></linearGradient>
+    <linearGradient id="gMetalB" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#b5bfca"/><stop offset=".5" stop-color="#e6eaef"/><stop offset="1" stop-color="#b5bfca"/></linearGradient>
+    <linearGradient id="gSupply" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f6f8fb"/><stop offset="1" stop-color="#dbe3ec"/></linearGradient>
+  </defs>
+</svg>
+
+<header>
+  <div class="hd">
+    <div>
+      <span class="chip">중학교 2학년 과학 · 전기와 자기</span>
+      <h1>자기장 안에서 전류가 흐르는 코일이 받는 힘의 특성 추리하기</h1>
+    </div>
+    <div class="score" id="score">⭐ 0 / 6</div>
+  </div>
+</header>
+
+<div class="wrap">
+  <div class="goal"><span class="lab">무엇을 알아볼까</span><span>자기장 안에서 전류가 흐르는 코일이 받는 힘의 특성을 알 수 있다.</span></div>
+  <ol class="bar6" id="bar6"></ol>
+
+  <div class="layout">
+    <div class="stagecol">
+      <div class="tabs" id="tabs" hidden></div>
+      <div class="live"><span class="pill" id="stepPill"></span><span class="pill on" id="onPill" hidden>● 전류가 흐르는 중</span></div>
+      <div class="stage" id="stage">
+        <svg id="scene" viewBox="0 0 1000 625" role="img" aria-label="가상 실험실 그림"></svg>
+        <svg id="pair" viewBox="0 0 1000 625" role="img" aria-label="실험 결과 비교 그림" style="display:none"></svg>
+      </div>
+      <div class="acts" id="acts"></div>
+    </div>
+
+    <div class="panel">
+      <div class="card task" id="task"></div>
+      <div class="obs" id="obsBox"><h3>👀 관찰 결과</h3><p id="obs"></p></div>
+      <div id="poles"></div>
+      <div id="cmp"></div>
+      <div id="qbox"></div>
+      <div class="nav">
+        <button class="btn ghost" id="prev">◀ 이전 과정</button>
+        <button class="btn primary" id="next">다음 과정 ▶</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="card rec" style="margin-top:18px">
+    <h3>📝 내 관찰 기록표</h3>
+    <table>
+      <thead><tr><th>과정</th><th>바꾼 것</th><th>코일의 움직임</th></tr></thead>
+      <tbody id="rec"></tbody>
+    </table>
+    <div style="margin-top:14px"><button class="btn ghost" id="reset">🔄 처음부터 다시</button></div>
+  </div>
+</div>
+<footer>중학교 2학년 과학 · 자기장 안에서 전류가 흐르는 코일이 받는 힘 탐구 활동 (가상 실험)</footer>
+
+<div id="lb" role="dialog" aria-label="그림 크게 보기"></div>
+
+<script>
+const NS = 'http://www.w3.org/2000/svg';
+const $ = s => document.querySelector(s);
+const clamp = (v,a,b) => Math.max(a, Math.min(b, v));
+const lerp = (a,b,t) => a + (b-a)*t;
+const easeOut = p => 1 - Math.pow(1-p, 3);
+const easeIO = p => p<.5 ? 2*p*p : 1 - 2*(1-p)*(1-p);
+const dist = (a,b) => Math.hypot(a.x-b.x, a.y-b.y);
+
+/* ================= 교과서 내용 ================= */
+const STEPS = [
+  {n:1, short:'자석 설치', text:'네오디뮴 자석을 책 고정대에 붙여 코일과 마주 보게 한다.', tag:null, changed:'', move:''},
+  {n:2, short:'스위치 켜기', text:'그네형 코일 장치를 전원 장치에 연결한 뒤 스위치를 눌러 코일의 움직임을 관찰한다.', tag:'관찰', changed:'(처음 상태)', move:'자석 쪽으로 움직인다.'},
+  {n:3, short:'자석 뒤집기', text:'자석을 반대로 뒤집어 붙여 자기장의 방향을 반대로 바꾸고, 코일의 움직임을 관찰한다.', tag:'관찰', changed:'자기장의 방향', move:'과정 2와 반대 방향으로 움직인다.'},
+  {n:4, short:'전류 방향', text:'코일에 흐르는 전류의 방향을 반대로 바꾸고, 코일의 움직임을 관찰한다.', tag:'관찰', changed:'전류의 방향', move:'과정 3과 반대 방향으로 움직인다.'},
+  {n:5, short:'전류 세기', text:'코일에 흐르는 전류의 세기를 더 세게 하고, 코일의 움직임을 관찰한다.', tag:'관찰', changed:'전류의 세기', move:'과정 4보다 더 크게 움직인다.'},
+  {n:6, short:'정리', text:'정리해 볼까', tag:'추리 및 결론 도출', changed:'', move:''}
+];
+
+const CFG = {
+  1:{ a:{how:'오른쪽에 있는 네오디뮴 자석을 끌어다 책 고정대에 붙여요. (눌러도 붙어요!)',
+         hs:['magnet'], btn:{label:'🧲 자석을 붙인다', fn:'attachMagnet'}},
+      b:{how:'자석이 코일과 마주 보고 있어요. 다음 과정으로 가요!'}},
+  2:{ a:{how:'전원 장치의 빨간 전선(+)과 검은 전선(−)을 끌어다 같은 색 단자에 연결해요. (눌러도 연결돼요!)',
+         hs:['clipR','clipB'], btn:{label:'🔌 전선을 연결한다', fn:'connectAll'}},
+      b:{how:'스위치를 눌러 켜고, 코일의 움직임을 관찰해요. 다시 누르면 꺼져요.', sw:true}},
+  3:{ a:{how:'자석을 눌러서 반대로 뒤집어 붙여요.',
+         hs:['magnetFlip'], btn:{label:'🧲 자석을 반대로 뒤집는다', fn:'flipMagnet'}},
+      b:{how:'스위치를 켜고 코일의 움직임을 관찰해요. 과정 2와 비교해 보세요.', sw:true}},
+  4:{ a:{how:'빨간 전선(+)과 검은 전선(−)을 눌러서 서로 바꿔 꽂아요. 그러면 코일에 흐르는 전류의 방향이 반대가 돼요.',
+         hs:['wires'], btn:{label:'🔌 전선을 바꿔 꽂는다', fn:'swapWires'}},
+      b:{how:'스위치를 켜고 코일의 움직임을 관찰해요. 과정 3과 비교해 보세요.', sw:true}},
+  5:{ a:{how:'전류를 약하게, 세게 바꿔 가며 스위치를 켜고 코일의 움직임을 비교해요.', sw:true, strength:true}},
+  6:{ a:{how:'관찰한 결과를 바탕으로 4개의 문제를 모두 맞혀 보세요.'}}
+};
+
+const QS = {
+  2:[{id:'2', tag:'관찰 기록', kind:'obsv',
+      q:'스위치를 켰을 때 코일은 어느 쪽으로 움직였나요?',
+      opts:['자석 쪽으로 움직였다.','자석 반대쪽으로 움직였다.','움직이지 않았다.'], ans:0,
+      model:'코일이 자석 쪽으로 움직인다.', hint:'스위치를 켜고 코일과 자석 사이의 거리가 어떻게 변하는지 보세요.',
+      res:'전류가 흐르는 코일은 자기장 속에서 힘을 받아 자석 쪽으로 움직였어요.'}],
+  3:[{id:'3', tag:'관찰 기록', kind:'obsv',
+      q:'스위치를 켰을 때, 코일의 움직임은 과정 2와 비교하여 어떻게 달라졌나요?',
+      opts:['움직이는 방향이 반대로 바뀌었다.','같은 방향으로 움직였다.','움직이지 않았다.'], ans:0,
+      model:'코일이 움직이는 방향이 과정 2와 반대로 바뀐다.', hint:'과정 2에서는 코일이 자석 쪽으로 움직였어요. 이번에는 어느 쪽인가요?',
+      res:'자기장의 방향을 반대로 바꾸니 코일이 움직이는 방향도 반대가 되었어요.'}],
+  6:[{id:'4', tag:'문제 ① · 과정 4', kind:'ask',
+      q:'과정 3과 비교하여 코일의 움직임은 어떻게 달라지는가?',
+      opts:['코일이 움직이는 방향이 반대로 바뀐다.','코일이 같은 방향으로 더 크게 움직인다.','코일이 같은 방향으로 더 작게 움직인다.','코일이 움직이지 않는다.'], ans:0,
+      model:'코일이 움직이는 방향이 반대로 바뀐다.', hint:'과정 3의 코일은 자석에서 멀어졌어요. 과정 4에서는 어느 쪽으로 움직였나요?'},
+     {id:'5', tag:'문제 ② · 과정 5', kind:'ask',
+      q:'과정 4와 비교하여 코일의 움직임은 어떻게 달라지는가?',
+      opts:['코일이 더 크게 움직인다.','코일이 더 작게 움직인다.','코일이 움직이는 방향이 반대로 바뀐다.','코일이 움직이지 않는다.'], ans:0,
+      model:'코일이 더 크게 움직인다.', hint:'과정 5에서 전류가 약할 때와 셀 때를 번갈아 켜 보며 비교해 보세요.'},
+     {id:'6a', tag:'문제 ③ · 정리해 볼까 1', kind:'ask',
+      q:'관찰한 결과를 바탕으로, 자기장의 방향이 달라지거나 코일에 흐르는 전류의 방향이 달라질 때 코일이 자석으로부터 받는 힘이 각각 어떻게 달라지는지 이야기해 보자.',
+      opts:['자기장의 방향이 반대로 바뀌거나 코일에 흐르는 전류의 방향이 반대로 바뀌면, 코일이 자석으로부터 받는 힘의 방향이 반대가 된다.',
+            '자기장의 방향이 반대로 바뀌면 힘의 방향이 반대가 되지만, 전류의 방향이 반대로 바뀌면 힘의 방향은 변하지 않는다.',
+            '자기장의 방향이나 전류의 방향이 바뀌어도 코일이 받는 힘의 방향은 변하지 않는다.',
+            '자기장의 방향이나 전류의 방향이 반대로 바뀌면 코일이 받는 힘의 세기가 약해진다.'], ans:0,
+      model:'자기장의 방향이 반대로 바뀌거나 코일에 흐르는 전류의 방향이 반대로 바뀌면 코일이 자석으로부터 받는 힘의 방향이 반대가 된다.',
+      hint:'과정 3(자기장 방향 변경)과 과정 4(전류 방향 변경)에서 코일의 움직임이 어떻게 달라졌는지 떠올려 보세요.'},
+     {id:'6b', tag:'문제 ④ · 정리해 볼까 2', kind:'ask',
+      q:'관찰한 결과를 바탕으로, 코일에 흐르는 전류의 세기가 달라질 때 코일이 자석으로부터 받는 힘이 어떻게 달라지는지 이야기해 보자.',
+      opts:['코일에 흐르는 전류의 세기가 세지면 코일이 받는 힘의 세기도 세진다.',
+            '코일에 흐르는 전류의 세기가 세지면 코일이 받는 힘의 세기는 작아진다.',
+            '코일에 흐르는 전류의 세기와 코일이 받는 힘의 세기는 관계가 없다.',
+            '코일에 흐르는 전류의 세기가 세지면 코일이 받는 힘의 방향이 반대가 된다.'], ans:0,
+      model:'코일에 흐르는 전류의 세기가 세지면 코일이 받는 힘의 세기도 세진다.',
+      hint:'과정 5에서 전류를 세게 했을 때 코일이 어떻게 움직였는지 떠올려 보세요.'}]
+};
+const ALLQ = Object.values(QS).flat();
+const SELF = [
+  {k:'fn', tag:'과정·기능', text:'코일의 움직임을 바탕으로 코일이 받는 자기력의 특성을 추리했는가?'},
+  {k:'att', tag:'가치·태도', text:'자기장에서 코일이 받는 힘을 관찰하고, 이러한 현상에 호기심이 생겼는가?'}
+];
+
+/* ================= 가상 실험실: 좌표 / 상태 ================= */
+const PIV = {x:590, y:80};      // 코일이 매달린 점
+const LEN = 236;                // 매달린 점 ~ 코일 중심
+const PXCM = 20;                // 1 cm = 20
+const KPA = 40;                 // 전류 1 A당 이동(px) → 2.0 cm
+const MAGH = {x:770, y:316};    // 책 고정대에 붙은 자석 중심
+const MAGL = {x:950, y:392};    // 떨어져 있는 자석
+const POST = {B:{x:570, y:424}, R:{x:620, y:424}};
+const TERM = {B:{x:98, y:448},  R:{x:158, y:448}};
+const LOOSE = {B:{x:500, y:540}, R:{x:700, y:540}};
+const SWP = {x:505, y:420};
+const KNOB = {x:205, y:388};
+
+const SC = {
+  attached:false, mag:{x:MAGL.x, y:MAGL.y}, magN:true, flip:null,
+  clip:{R:{x:LOOSE.R.x, y:LOOSE.R.y, conn:false}, B:{x:LOOSE.B.x, y:LOOSE.B.y, conn:false}},
+  swapT:0, swapped:false, on:false, strength:'weak',
+  x:0, v:0, knobA:-40, busy:false, rec:true,
+  showLabels:true, showField:false
+};
+
+/* ================= 앱 상태 ================= */
+let cur, st, qs, self, obsOverride, tab6, MEAS;
+function shuffled(n){ const a=[...Array(n).keys()]; for(let i=n-1;i>0;i--){const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]];} return a; }
+function freshState(){
+  cur = 1; obsOverride = null; tab6 = 0; MEAS = {};
+  st = {}; for(let n=1;n<=6;n++) st[n] = {phase:'a', seen:{}, strength:'weak'};
+  qs = {}; ALLQ.forEach(q => qs[q.id] = {wrong:new Set(), done:false, order:shuffled(q.opts.length)});
+  self = {fn:null, att:null};
+}
+freshState();
+
+const stepQs = n => QS[n] || [];
+const observed = n => n===4 ? !!st[4].seen.main : n===5 ? !!(st[5].seen.weak && st[5].seen.strong) : false;
+const isDone = n => n===1 ? st[1].phase==='b'
+                  : n===6 ? (QS[6].every(q => qs[q.id].done) && self.fn && self.att)
+                  : (n===4 || n===5) ? observed(n)
+                  : stepQs(n).every(q => qs[q.id].done);
+const maxStep = () => { for(let n=1;n<=6;n++) if(!isDone(n)) return n; return 6; };
+const cfg = () => CFG[cur][st[cur].phase];
+const swKey = () => cur===5 ? SC.strength : 'main';
+const stars = () => ALLQ.filter(q => qs[q.id].done && qs[q.id].wrong.size===0).length;
+const seenReady = () => cur===5 ? !!(st[5].seen.weak && st[5].seen.strong) : !!st[cur].seen.main;
+
+/* 단계에 들어갈 때 장치를 그 단계의 모습으로 되돌린다 */
+function applyStepState(){
+  anims.length = 0;
+  const n = cur, ph = st[n].phase;
+  SC.on = false; SC.x = 0; SC.v = 0; SC.busy = false; SC.flip = null; SC.rec = true;
+  SC.strength = (n===5) ? st[5].strength : 'weak';
+  SC.attached = (n===1) ? ph==='b' : true;
+  SC.mag = SC.attached ? {...MAGH} : {...MAGL};
+  SC.magN = !(n>=4 || (n===3 && ph==='b'));
+  SC.swapped = (n===5) || (n===4 && ph==='b');
+  SC.swapT = SC.swapped ? 1 : 0;
+  const conn = n>=3 || (n===2 && ph==='b');
+  ['R','B'].forEach(k => { const c = SC.clip[k]; c.conn = conn; c.x = LOOSE[k].x; c.y = LOOSE[k].y; });
+}
+
+/* ================= 애니메이션 도우미 ================= */
+const anims = [];
+function tween(ms, fn, done){ anims.push({t0:performance.now(), ms, fn, done}); }
+function runAnims(now){
+  for(let i=anims.length-1;i>=0;i--){
+    const a = anims[i]; if(!a) continue;
+    const p = (now - a.t0)/a.ms;
+    if(p>=1){ a.fn(1); anims.splice(i,1); if(a.done) a.done(); } else a.fn(p<0?0:p);
+  }
+}
+function pop(x,y){
+  const c = document.createElementNS(NS,'circle');
+  c.setAttribute('class','fx'); c.setAttribute('cx',x); c.setAttribute('cy',y); c.setAttribute('r',40);
+  $('#fx').appendChild(c); setTimeout(() => c.remove(), 650);
+}
+
+/* ================= 동작(탐구 활동) ================= */
+function attachMagnet(){
+  if(SC.attached || SC.busy) return; SC.busy = true;
+  const f = {...SC.mag};
+  tween(380, p => { const e = easeOut(p); SC.mag.x = lerp(f.x, MAGH.x, e); SC.mag.y = lerp(f.y, MAGH.y, e); }, () => {
+    SC.attached = true; SC.busy = false; SC.mag = {...MAGH}; pop(MAGH.x-10, MAGH.y);
+    st[1].phase = 'b'; renderAll();
+  });
+}
+function backMagnet(){
+  const f = {...SC.mag}; SC.busy = true;
+  tween(350, p => { const e = easeOut(p); SC.mag.x = lerp(f.x, MAGL.x, e); SC.mag.y = lerp(f.y, MAGL.y, e); }, () => { SC.busy = false; });
+}
+function connectClip(k){
+  const c = SC.clip[k]; if(c.conn || c.moving) return; c.moving = true;
+  const f = {x:c.x, y:c.y}, to = POST[k];
+  tween(380, p => { const e = easeOut(p); c.x = lerp(f.x, to.x, e); c.y = lerp(f.y, to.y, e); }, () => {
+    c.conn = true; c.moving = false; pop(to.x, to.y);
+    if(SC.clip.R.conn && SC.clip.B.conn && cur===2 && st[2].phase==='a'){ st[2].phase = 'b'; renderAll(); }
+  });
+}
+function connectAll(){ connectClip('R'); connectClip('B'); }
+function backClip(k){
+  const c = SC.clip[k], f = {x:c.x, y:c.y}, to = LOOSE[k]; c.moving = true;
+  tween(350, p => { const e = easeOut(p); c.x = lerp(f.x, to.x, e); c.y = lerp(f.y, to.y, e); }, () => { c.moving = false; });
+}
+function flipMagnet(){
+  if(SC.busy || SC.flip!==null) return; SC.busy = true; SC.flip = 0;
+  tween(950, p => { SC.flip = p; }, () => {
+    SC.magN = !SC.magN; SC.flip = null; SC.busy = false; pop(MAGH.x-10, MAGH.y);
+    if(cur===3 && st[3].phase==='a'){ st[3].phase = 'b'; renderAll(); }
+  });
+}
+function swapWires(){
+  if(SC.busy) return; SC.busy = true;
+  const from = SC.swapT, to = SC.swapped ? 0 : 1;
+  tween(850, p => { SC.swapT = lerp(from, to, easeIO(p)); }, () => {
+    SC.swapT = to; SC.swapped = !SC.swapped; SC.busy = false;
+    if(cur===4 && st[4].phase==='a'){ st[4].phase = 'b'; renderAll(); }
+  });
+}
+const ACT = {attachMagnet, connectAll, flipMagnet, swapWires};
+
+function setSwitch(on){
+  if(!cfg().sw || SC.busy) return;
+  const was = isDone(cur);
+  SC.on = on;
+  if(on){ SC.rec = false; st[cur].seen[swKey()] = true; }
+  refreshStage(); renderPanels();
+  if(!was && isDone(cur) && (cur===4 || cur===5)) nudgeNext();
+}
+function setStrength(k){
+  if(SC.busy) return;
+  st[5].strength = k; SC.strength = k;
+  if(SC.on){ SC.rec = false; st[5].seen[k] = true; }
+  const was = false;
+  refreshStage(); renderPanels();
+  if(cur===5 && isDone(5)) nudgeNext();
+}
+function answer(id, i){
+  const q = ALLQ.find(x => x.id===id), s = qs[id];
+  if(s.done || s.wrong.has(i)) return;
+  const was = isDone(cur);
+  if(i===q.ans){ s.done = true; if(q.res) obsOverride = q.res; } else s.wrong.add(i);
+  renderPanels();
+  if(!was && isDone(cur) && cur<6) nudgeNext();
+}
+let nudged = {};
+function nudgeNext(){
+  if(nudged[cur]) return; nudged[cur] = true;
+  setTimeout(() => { const n = $('#next'); if(n && !n.disabled) n.scrollIntoView({behavior:'smooth', block:'center'}); }, 700);
+}
+function go(n){
+  if(n<1 || n>6 || n>maxStep()) return;
+  cur = n; obsOverride = null; enterStep();
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+$('#prev').addEventListener('click', () => go(cur-1));
+$('#next').addEventListener('click', () => go(cur+1));
+$('#reset').addEventListener('click', () => { if(confirm('처음부터 다시 할까요?')){ freshState(); nudged = {}; enterStep(); window.scrollTo({top:0}); } });
+
+/* ================= 그림 조각(SVG 문자열) ================= */
+function magnetSVG(cx, cy, N, rot, letters){
+  const c1 = N ? '#ef4444' : '#2563eb', c2 = N ? '#2563eb' : '#ef4444';
+  let s = '<g transform="translate('+cx.toFixed(1)+' '+cy.toFixed(1)+') rotate('+rot.toFixed(1)+')">'
+    + '<rect x="-20" y="-30" width="20" height="60" rx="4" fill="'+c1+'" stroke="#fff" stroke-width="3"/>'
+    + '<rect x="0" y="-30" width="20" height="60" rx="4" fill="'+c2+'" stroke="#fff" stroke-width="3"/>';
+  if(letters) s += '<text x="-10" y="8" text-anchor="middle" font-size="22" font-weight="900" fill="#fff">'+(N?'N':'S')+'</text>'
+                 + '<text x="10" y="8" text-anchor="middle" font-size="22" font-weight="900" fill="#fff">'+(N?'S':'N')+'</text>';
+  return s + '</g>';
+}
+function fieldSVG(N){
+  let s = '';
+  [-26,-13,0,13,26].forEach(o => {
+    const x0 = 746, y0 = MAGH.y+o, cx = 700, cy = MAGH.y+o*1.4, x1 = 636, y1 = MAGH.y+o*2.6, t = .6;
+    const px = (1-t)*(1-t)*x0 + 2*(1-t)*t*cx + t*t*x1, py = (1-t)*(1-t)*y0 + 2*(1-t)*t*cy + t*t*y1;
+    const tx = 2*(1-t)*(cx-x0) + 2*t*(x1-cx), ty = 2*(1-t)*(cy-y0) + 2*t*(y1-cy);
+    let ang = Math.atan2(ty, tx)*180/Math.PI; if(!N) ang += 180;
+    s += '<path d="M'+x0+' '+y0+' Q'+cx+' '+cy+' '+x1+' '+y1+'" fill="none" stroke="#7c3aed" stroke-width="3" stroke-dasharray="7 6" opacity=".6"/>'
+       + '<polygon points="-8,-8 14,0 -8,8" transform="translate('+px.toFixed(1)+' '+py.toFixed(1)+') rotate('+ang.toFixed(1)+')" fill="#7c3aed" opacity=".85"/>';
+  });
+  return s;
+}
+function markSVG(y, cross){
+  return '<circle cx="0" cy="'+y+'" r="11" fill="#fff" stroke="#7c2d12" stroke-width="3"/>'
+    + (cross ? '<path d="M-5 '+(y-5)+'L5 '+(y+5)+'M5 '+(y-5)+'L-5 '+(y+5)+'" stroke="#7c2d12" stroke-width="3.5" stroke-linecap="round"/>'
+             : '<circle cx="0" cy="'+y+'" r="4.5" fill="#7c2d12"/>');
+}
+/* 기둥·파란 막대·그네형 코일·책 고정대·자석 (움직이는 부분) */
+function poleBadge(x, y, isN){
+  return '<g transform="translate('+x+' '+y+')"><circle r="15" fill="'+(isN?'#ef4444':'#2563eb')+'" stroke="#fff" stroke-width="3"/>'
+       + '<text y="7" text-anchor="middle" font-size="20" font-weight="900" fill="#fff">'+(isN?'N':'S')+'</text></g>';
+}
+function coreSVG(p){
+  const th = Math.asin(clamp(p.x/LEN, -.9, .9)), deg = (-th*180/Math.PI).toFixed(2);
+  let s = '';
+  s += '<rect x="446" y="60" width="9" height="382" rx="3" fill="url(#gMetalB)"/>';
+  s += '<rect x="428" y="52" width="13" height="390" rx="4" fill="url(#gMetal)" stroke="#94a3b8" stroke-width="1.5"/>';
+  s += '<rect x="418" y="426" width="46" height="16" rx="4" fill="#94a3b8" stroke="#64748b" stroke-width="2"/>';
+  s += '<rect x="412" y="60" width="256" height="20" rx="5" fill="#2563eb"/><rect x="412" y="60" width="256" height="7" rx="3.5" fill="#93c5fd" opacity=".6"/>';
+  s += '<circle cx="434" cy="52" r="6" fill="#e2e8f0" stroke="#64748b" stroke-width="2"/><circle cx="590" cy="70" r="5" fill="#e2e8f0" stroke="#64748b" stroke-width="2"/>';
+  if(p.ghost) s += '<rect x="568" y="246" width="44" height="140" rx="8" fill="none" stroke="#64748b" stroke-width="3" stroke-dasharray="8 6" opacity=".75"/>';
+  s += '<g transform="translate(590 80) rotate('+deg+')">'
+    + '<line x1="-8" y1="0" x2="-8" y2="168" stroke="#64748b" stroke-width="3"/><line x1="8" y1="0" x2="8" y2="168" stroke="#64748b" stroke-width="3"/>'
+    + '<rect x="-22" y="166" width="44" height="140" rx="8" fill="rgba(186,222,255,.42)" stroke="#8fb3d1" stroke-width="3"/>'
+    + '<rect x="-12" y="160" width="8" height="12" rx="2" fill="#f59e0b"/><rect x="4" y="160" width="8" height="12" rx="2" fill="#f59e0b"/>'
+    + '<ellipse cx="-15" cy="236" rx="6" ry="52" fill="#d97706" stroke="#92400e" stroke-width="2"/>'
+    + '<rect x="-15" y="184" width="30" height="104" fill="#fbbf24"/>'
+    + '<line x1="-15" y1="184" x2="15" y2="184" stroke="#b45309" stroke-width="4"/><line x1="-15" y1="288" x2="15" y2="288" stroke="#b45309" stroke-width="4"/>';
+  for(let i=0;i<5;i++){ const x = -11 + i*5.5; s += '<line x1="'+x+'" y1="288" x2="'+(x+4)+'" y2="184" stroke="#b45309" stroke-width="3.5" stroke-linecap="round"/>'; }
+  s += '<ellipse cx="15" cy="236" rx="6" ry="52" fill="#fde68a" stroke="#92400e" stroke-width="2"/><ellipse cx="15" cy="236" rx="2.5" ry="36" fill="#fff7ed" stroke="#b45309" stroke-width="1.5"/>';
+  if(p.cp){ const fN = p.cp==='N'; s += poleBadge(38,236,fN) + poleBadge(-38,236,!fN); }
+  s += '</g>';
+  s += '<rect x="790" y="232" width="16" height="210" rx="3" fill="#f8fafc" stroke="#cbd5e1" stroke-width="3"/>'
+     + '<rect x="790" y="426" width="92" height="14" rx="3" fill="#f1f5f9" stroke="#cbd5e1" stroke-width="3"/>';
+  if(p.field) s += fieldSVG(p.magN);
+  if(p.mag) s += magnetSVG(p.mag.x, p.mag.y, p.magN, p.mag.rot||0, !p.mag.rot);
+  return s;
+}
+
+/* ================= 정적 장면 ================= */
+function supplyStatic(){
+  return '<g>'
+  + '<ellipse cx="150" cy="480" rx="132" ry="9" fill="rgba(15,23,42,.14)"/>'
+  + '<polygon points="28,214 268,214 290,192 50,192" fill="#f8fafc" stroke="#cbd5e1" stroke-width="3"/>'
+  + '<rect x="28" y="214" width="240" height="262" rx="10" fill="url(#gSupply)" stroke="#cbd5e1" stroke-width="3"/>'
+  + '<text x="148" y="242" text-anchor="middle" font-size="22" font-weight="800" fill="#0f172a">직류 전원 장치</text>'
+  + '<rect x="48" y="256" width="200" height="92" rx="10" fill="#0b1220"/>'
+  + '<text id="dispV" x="62" y="296" font-size="38" font-family="ui-monospace,Menlo,Consolas,monospace" font-weight="700" fill="#ff4d4d">03.5 V</text>'
+  + '<text id="dispA" x="62" y="338" font-size="38" font-family="ui-monospace,Menlo,Consolas,monospace" font-weight="700" fill="#ff4d4d">00.00 A</text>'
+  + '<g id="knob" transform="translate(205 388)"><circle r="25" fill="#cbd5e1" stroke="#64748b" stroke-width="3"/><circle r="17" fill="#eef2f7"/><line y1="-3" y2="-21" stroke="#0f172a" stroke-width="4.5" stroke-linecap="round"/></g>'
+  + '<text x="205" y="432" text-anchor="middle" font-size="18" font-weight="800" fill="#334155">전압 조절</text>'
+  + '<circle id="lamp" cx="64" cy="388" r="10" fill="#475569" stroke="#334155" stroke-width="2"/>'
+  + '<text x="64" y="424" text-anchor="middle" font-size="18" font-weight="800" fill="#334155">출력</text>'
+  + '<circle cx="98" cy="448" r="20" fill="#111827" stroke="#fff" stroke-width="3"/><text x="98" y="419" text-anchor="middle" font-size="40" font-weight="900" fill="#111827">−</text>'
+  + '<circle cx="158" cy="448" r="20" fill="#dc2626" stroke="#fff" stroke-width="3"/><text x="158" y="419" text-anchor="middle" font-size="40" font-weight="900" fill="#dc2626">+</text>'
+  + '</g>';
+}
+function boardStatic(){
+  return '<g>'
+  + '<ellipse cx="665" cy="482" rx="290" ry="12" fill="rgba(15,23,42,.14)"/>'
+  + '<rect x="410" y="458" width="40" height="18" rx="3" fill="#1f2937"/><rect x="880" y="458" width="40" height="18" rx="3" fill="#1f2937"/>'
+  + '<rect x="400" y="440" width="530" height="20" rx="4" fill="url(#gBoard)" stroke="#9a3412" stroke-width="2"/>'
+  + '<rect x="404" y="443" width="522" height="4" rx="2" fill="#fff" opacity=".28"/>'
+  + '<rect x="560" y="408" width="20" height="32" rx="3" fill="#111827"/><rect x="556" y="402" width="28" height="9" rx="3" fill="#000"/>'
+  + '<rect x="610" y="408" width="20" height="32" rx="3" fill="#dc2626"/><rect x="606" y="402" width="28" height="9" rx="3" fill="#b91c1c"/>'
+  + '</g>';
+}
+function rulerStatic(){
+  let s = '<g><rect x="400" y="580" width="380" height="34" rx="6" fill="#fde68a" stroke="#b45309" stroke-width="2.5"/>';
+  for(let k=-9;k<=9;k++){
+    const x = 590 + k*PXCM, h = (k%5===0) ? 17 : 10;
+    s += '<line x1="'+x+'" y1="580" x2="'+x+'" y2="'+(580+h)+'" stroke="#78350f" stroke-width="2"/>';
+    if(k%2===0) s += '<text x="'+x+'" y="607" text-anchor="middle" font-size="16" font-weight="800" fill="#78350f">'+Math.abs(k)+'</text>';
+  }
+  s += '<polygon id="rulerGhost" points="580,562 600,562 590,578" fill="none" stroke="#64748b" stroke-width="2.5"/>'
+     + '<polygon id="rulerMark" points="-10,562 10,562 0,578" transform="translate(590 0)" fill="#dc2626"/>'
+     + '<text x="20" y="568" font-size="21" font-weight="800" fill="#334155" class="halo">📏 코일이 움직인 거리</text>'
+     + '<text id="readout" x="20" y="608" font-size="34" font-weight="900" fill="#0f172a" class="halo"></text></g>';
+  return s;
+}
+function labelsStatic(){
+  const L = [
+    {id:'lbSw',  t:'스위치',        x:370, y:404, l:[400,400,478,418]},
+    {id:'lbCoil',t:'코일',          x:505, y:150, l:[520,160,578,256]},
+    {id:'lbHold',t:'책 고정대',     x:900, y:200, l:[884,210,806,238]},
+    {id:'lbMag', t:'네오디뮴 자석', x:712, y:166, l:[746,178,766,284]}
+  ];
+  return L.map(o => '<g id="'+o.id+'"><line x1="'+o.l[0]+'" y1="'+o.l[1]+'" x2="'+o.l[2]+'" y2="'+o.l[3]+'" stroke="#1e3a8a" stroke-width="3"/>'
+    + '<circle cx="'+o.l[2]+'" cy="'+o.l[3]+'" r="5.5" fill="#1e3a8a"/>'
+    + '<text x="'+o.x+'" y="'+o.y+'" text-anchor="middle" font-size="26" font-weight="900" fill="#1e3a8a" class="halo">'+o.t+'</text></g>').join('');
+}
+function buildScene(){
+  $('#scene').innerHTML =
+    '<rect width="1000" height="625" fill="url(#gWall)"/>'
+  + '<rect y="476" width="1000" height="149" fill="url(#gTable)"/><rect y="474" width="1000" height="4" fill="#e3d2b0"/>'
+  + supplyStatic() + boardStatic()
+  + '<g id="swg"><rect x="478" y="414" width="54" height="26" rx="7" fill="#f1f5f9" stroke="#cbd5e1" stroke-width="3"/>'
+  +   '<rect id="swDome" x="490" y="404" width="30" height="12" rx="6" fill="#e2e8f0" stroke="#94a3b8" stroke-width="2.5"/></g>'
+  + '<g id="core"></g><g id="cflow" style="display:none"><path id="cfL" class="cfl"/><path id="cfR" class="cfl"/><path id="cfW0" class="cfl2"/><path id="cfW1" class="cfl2"/><path id="cfW2" class="cfl2"/><path id="cfW3" class="cfl2"/><path id="cfW4" class="cfl2"/></g>'
+  + '<g id="wires"><path id="wB" fill="none" stroke="#111827" stroke-width="8" stroke-linecap="round"/>'
+  +   '<path id="wR" fill="none" stroke="#dc2626" stroke-width="8" stroke-linecap="round"/>'
+  +   '<g id="dots"></g><g id="clips"></g></g>'
+  + rulerStatic()
+  + '<g id="labels">'+labelsStatic()+'</g>'
+  + '<g id="inset" style="pointer-events:none"></g><g id="fx"></g><g id="hs"></g>';
+  const dots = $('#dots');
+  for(let i=0;i<60;i++){ const c = document.createElementNS(NS,'circle'); c.setAttribute('r',6.5); c.setAttribute('fill','#fbbf24'); c.setAttribute('stroke','#b45309'); c.setAttribute('stroke-width',2); c.style.display='none'; dots.appendChild(c); }
+  const clips = $('#clips');
+  ['B','R'].forEach(k => { const g = document.createElementNS(NS,'g'); g.id = 'clip'+k;
+    g.innerHTML = '<rect x="-12" y="-10" width="24" height="20" rx="6" fill="'+(k==='R'?'#dc2626':'#111827')+'" stroke="#fff" stroke-width="2.5"/><rect x="-6" y="10" width="12" height="9" rx="2" fill="#94a3b8" stroke="#64748b" stroke-width="1.5"/>';
+    clips.appendChild(g); });
+}
+buildScene();
+
+/* ================= 매 프레임 그리기 ================= */
+const circuitOK = () => SC.attached && SC.clip.R.conn && SC.clip.B.conn;
+const curI = () => SC.strength==='strong' ? 2 : 1;
+const dirSign = () => (SC.magN?1:-1) * (SC.swapped?-1:1);
+const targetX = () => (SC.on && circuitOK()) ? dirSign()*KPA*curI() : 0;
+
+function clipPos(k){
+  const c = SC.clip[k];
+  if(!c.conn) return {x:c.x, y:c.y};
+  const o = k==='R' ? 'B' : 'R', a = POST[k], b = POST[o], t = SC.swapT;
+  return {x:lerp(a.x,b.x,t), y:lerp(a.y,b.y,t) - 30*Math.sin(Math.PI*t)*(k==='R'?1:-.3)};
+}
+function wirePath(s,e){
+  const c1 = {x:s.x, y:s.y+100}, c2 = {x:e.x, y:e.y + (e.y<470 ? 120 : 60)};
+  return 'M'+s.x+' '+s.y+' C'+c1.x+' '+c1.y+' '+c2.x+' '+c2.y+' '+e.x.toFixed(1)+' '+e.y.toFixed(1);
+}
+let lastCore = '', lastInset = '', lastDisp = '', dotPhase = 0;
+function drawCore(){
+  let mag = {x:SC.mag.x, y:SC.mag.y, rot:0};
+  if(SC.flip!==null){
+    const f = SC.flip;
+    mag = {x:MAGH.x - 70*Math.sin(Math.PI*f), y:MAGH.y - 14*Math.sin(Math.PI*f), rot:180*clamp((f-.3)/.4,0,1)};
+  }
+  const p = {x:SC.x, magN:SC.magN, mag, cur:(circuitOK()&&SC.on) ? (SC.swapped?'ccw':'cw') : null, cp:(circuitOK()&&SC.on) ? (SC.swapped?'N':'S') : null,
+             field:SC.showField && SC.attached && SC.flip===null, ghost:Math.abs(SC.x)>2};
+  const key = [SC.x.toFixed(1), SC.magN, mag.x.toFixed(0), mag.y.toFixed(0), mag.rot.toFixed(0), p.cur, p.cp, p.field, p.ghost].join('|');
+  if(key!==lastCore){ lastCore = key; $('#core').innerHTML = coreSVG(p); }
+}
+let cfPhase = 0, lastCfDir = null;
+function drawCoilFlow(dt){
+  const g = $('#cflow'), on = SC.on && circuitOK();
+  g.style.display = on ? '' : 'none'; if(!on) return;
+  const th = Math.asin(clamp(SC.x/LEN, -.9, .9)), deg = (-th*180/Math.PI).toFixed(2), cw = !SC.swapped;
+  g.setAttribute('transform','translate('+PIV.x+' '+PIV.y+') rotate('+deg+')');
+  if(lastCfDir!==cw){ lastCfDir = cw;
+    $('#cfL').setAttribute('d', cw ? 'M-8 2L-8 162' : 'M-8 162L-8 2');
+    $('#cfR').setAttribute('d', cw ? 'M8 162L8 2' : 'M8 2L8 162');
+    for(let i=0;i<5;i++){ const x = -11 + i*5.5;   // 코일 앞면: 시계 방향이면 위로, 반시계 방향이면 아래로
+      $('#cfW'+i).setAttribute('d', cw ? 'M'+x+' 288L'+(x+4)+' 184' : 'M'+(x+4)+' 184L'+x+' 288'); } }
+  cfPhase = (cfPhase + (SC.strength==='strong' ? 90 : 48)*dt) % 1200;
+  const off = (-cfPhase).toFixed(1); $('#cfL').style.strokeDashoffset = off; $('#cfR').style.strokeDashoffset = off;
+  for(let i=0;i<5;i++) $('#cfW'+i).style.strokeDashoffset = off;
+}
+function drawWires(){
+  const rp = clipPos('R'), bp = clipPos('B');
+  $('#wR').setAttribute('d', wirePath(TERM.R, rp));
+  $('#wB').setAttribute('d', wirePath(TERM.B, bp));
+  ['R','B'].forEach(k => {
+    const p = k==='R'?rp:bp;
+    $('#clip'+k).setAttribute('transform','translate('+p.x.toFixed(1)+' '+p.y.toFixed(1)+')');
+  });
+}
+function drawDots(dt){
+  const dots = $('#dots').children, flow = SC.on && circuitOK();
+  if(!flow){ for(const d of dots) d.style.display='none'; return; }
+  const strong = SC.strength==='strong', gap = strong ? 26 : 48, speed = strong ? 170 : 85;
+  dotPhase = (dotPhase + speed*dt) % 100000;
+  const wR = $('#wR'), wB = $('#wB');
+  [[wR,0,false],[wB,30,true]].forEach(([w,off,rev]) => {
+    const len = w.getTotalLength(), n = Math.min(30, Math.floor(len/gap));
+    for(let i=0;i<30;i++){
+      const d = dots[off+i];
+      if(i>=n){ d.style.display='none'; continue; }
+      let s = (dotPhase + i*gap) % (n*gap); const q = clamp(s/(n*gap)*len, 0, len);
+      const pt = w.getPointAtLength(rev ? len-q : q);
+      d.style.display=''; d.setAttribute('cx', pt.x.toFixed(1)); d.setAttribute('cy', pt.y.toFixed(1));
+    }
+  });
+}
+function drawSupply(dt){
+  const I = curI(), on = SC.on && circuitOK();
+  const v = (3.5*I).toFixed(1).padStart(4,'0')+' V', a = (on ? I.toFixed(2) : '0.00').padStart(5,'0')+' A';
+  const key = v+a+on;
+  if(key!==lastDisp){ lastDisp = key; $('#dispV').textContent = v; $('#dispA').textContent = a; $('#lamp').setAttribute('fill', on?'#22c55e':'#475569'); }
+  const tgt = SC.strength==='strong' ? 55 : -40;
+  SC.knobA += (tgt-SC.knobA)*Math.min(1, dt*10);
+  $('#knob').setAttribute('transform','translate('+KNOB.x+' '+KNOB.y+') rotate('+SC.knobA.toFixed(1)+')');
+  const dome = $('#swDome'); dome.setAttribute('y', SC.on?409:404); dome.setAttribute('fill', SC.on?'#94a3b8':'#e2e8f0');
+}
+function drawRuler(){
+  $('#rulerMark').setAttribute('transform','translate('+(590+SC.x).toFixed(1)+' 0)');
+  const cm = SC.x/PXCM, ab = Math.abs(cm);
+  $('#readout').textContent = ab<0.2 ? '0.0 cm' : (cm>0 ? '자석 쪽 ' : '자석 반대쪽 ') + ab.toFixed(1) + ' cm';
+}
+function drawInset(){
+  const ok = circuitOK() && cur>=2 && (cur>2 || st[2].phase==='b');
+  const on = SC.on && circuitOK();
+  const key = ok+'|'+SC.swapped+'|'+on;
+  if(key===lastInset) return; lastInset = key;
+  if(!ok){ $('#inset').innerHTML = ''; return; }
+  const cw = !SC.swapped, cN = SC.swapped;               // 시계 방향 → 자석 쪽 면 S극 / 반시계 방향 → N극
+  const badge = (x,y,isN) => '<circle cx="'+x+'" cy="'+y+'" r="15" fill="'+(isN?'#ef4444':'#2563eb')+'" stroke="#fff" stroke-width="3"/>'
+    + '<text x="'+x+'" y="'+(y+7)+'" text-anchor="middle" font-size="20" font-weight="900" fill="#fff">'+(isN?'N':'S')+'</text>';
+  const dash = (x1,y1,x2,y2) => '<path class="cf" d="M'+x1+' '+y1+' L'+x2+' '+y2+'"/>';
+  const yT = 86, yB = 146, cy = 116;
+  let s = '<rect x="12" y="12" width="396" height="212" rx="16" fill="#fff" opacity=".93" stroke="#bfdcf2" stroke-width="3"/>'
+    + '<text x="210" y="42" text-anchor="middle" font-size="23" font-weight="900" fill="#1e3a8a">코일에 흐르는 전류</text>'
+    + '<line x1="252" y1="58" x2="252" y2="214" stroke="#cbd5e1" stroke-width="2" stroke-dasharray="6 6"/>';
+  /* ---- 옆에서 본 코일 ---- */
+  s += '<line x1="78" y1="58" x2="78" y2="'+yT+'" stroke="#475569" stroke-width="4"/><line x1="178" y1="58" x2="178" y2="'+yT+'" stroke="#475569" stroke-width="4"/>'
+    + '<ellipse cx="66" cy="'+cy+'" rx="11" ry="32" fill="#d97706" stroke="#92400e" stroke-width="3"/>'
+    + '<rect x="66" y="'+yT+'" width="120" height="'+(yB-yT)+'" fill="#fbbf24"/>'
+    + '<line x1="66" y1="'+yT+'" x2="186" y2="'+yT+'" stroke="#b45309" stroke-width="5"/><line x1="66" y1="'+yB+'" x2="186" y2="'+yB+'" stroke="#b45309" stroke-width="5"/>';
+  for(let i=0;i<6;i++){ const x = 78+i*20;
+    s += '<line x1="'+x+'" y1="'+yB+'" x2="'+(x+8)+'" y2="'+yT+'" stroke="#b45309" stroke-width="7" stroke-linecap="round"/>'; }
+  s += '<ellipse cx="186" cy="'+cy+'" rx="11" ry="32" fill="#fde68a" stroke="#92400e" stroke-width="3"/>'
+    + '<ellipse cx="186" cy="'+cy+'" rx="5" ry="20" fill="#fff7ed" stroke="#b45309" stroke-width="2"/>';
+  if(on){
+    for(let i=0;i<6;i++){ const x = 78+i*20, mx = x+4, my = (yT+yB)/2;
+      s += (cw ? dash(x,yB,x+8,yT) : dash(x+8,yT,x,yB))
+         + (i%2===1 ? '<polygon points="'+(cw ? '0,-15 12,9 -12,9' : '0,15 12,-9 -12,-9')+'" transform="translate('+mx+' '+my+')" fill="#fff" stroke="#7c2d12" stroke-width="2.5"/>' : ''); }
+    s += (cw ? dash(78,58,78,yT)+dash(178,yT,178,58) : dash(78,yT,78,58)+dash(178,58,178,yT))
+      + '<polygon points="'+(cw?'0,9 8,-6 -8,-6':'0,-9 8,6 -8,6')+'" transform="translate(78 70)" fill="#fde047" stroke="#7c2d12" stroke-width="2"/>'
+      + '<polygon points="'+(cw?'0,-9 8,6 -8,6':'0,9 8,-6 -8,-6')+'" transform="translate(178 70)" fill="#fde047" stroke="#7c2d12" stroke-width="2"/>'
+      + badge(222,cy,cN) + badge(34,cy,!cN);
+  }
+  if(on){
+    const inX = cw ? 78 : 178, outX = cw ? 178 : 78;
+    const lab = (x, txt, c) =>  '<text x="'+(x<128 ? x-12 : x+13)+'" y="78" text-anchor="'+(x<128?'end':'start')+'" font-size="16" font-weight="900" fill="'+c+'" class="halo">'+txt+'</text>';
+    s += lab(inX,'들어옴','#047857') + lab(outX,'나감','#7c3aed');
+  }
+  s += '<text x="226" y="154" text-anchor="middle" font-size="16" font-weight="900" fill="#334155">자석 쪽</text>'
+    + '<text x="128" y="182" text-anchor="middle" font-size="18" font-weight="900" fill="#475569">옆에서 본 코일</text>'
+    + '<text x="128" y="206" text-anchor="middle" font-size="16" font-weight="800" fill="'+(on?'#b45309':'#94a3b8')+'">'+(on?'들어와 코일을 돌아 나가요':'(전류 없음)')+'</text>';
+  /* ---- 자석 쪽에서 본 코일 ---- */
+  s += '<circle cx="336" cy="112" r="34" fill="rgba(245,158,11,.1)" stroke="#d97706" stroke-width="10"/>'
+    + (on ? '<circle class="flow'+(cw?'':' ccw')+'" cx="336" cy="112" r="34"/>' : '')
+    + (cw ? '<polygon points="325,66 351,78 325,90" fill="#7c2d12"/>' : '<polygon points="347,66 321,78 347,90" fill="#7c2d12"/>')
+    + '<text x="336" y="108" text-anchor="middle" font-size="15" font-weight="800" fill="#475569">코일 면</text>'
+    + '<text x="336" y="134" text-anchor="middle" font-size="26" font-weight="900" fill="'+(cN?'#dc2626':'#2563eb')+'">'+(cN?'N극':'S극')+'</text>'
+    + '<text x="336" y="182" text-anchor="middle" font-size="17" font-weight="800" fill="#475569">자석 쪽에서 보면</text>'
+    + '<text x="336" y="206" text-anchor="middle" font-size="17" font-weight="900" fill="#7c2d12">전류: '+(cw?'시계':'반시계')+' 방향</text>';
+  $('#inset').innerHTML = s;
+}
+
+/* 핫스팟(누르는 곳) */
+let HS = [], HSMAP = {}, drag = null;
+function hsDefs(){
+  const c = cfg(), L = [];
+  (c.hs||[]).forEach(id => {
+    if(id==='magnet') L.push({id, label:'끌어다 붙여요', r:46, pos:()=>SC.attached?MAGH:SC.mag, drag:true,
+      setPos:p=>{SC.mag.x=clamp(p.x,30,970); SC.mag.y=clamp(p.y,110,600);},
+      drop:()=>{ if(dist(SC.mag,MAGH)<140) attachMagnet(); else backMagnet(); }, tap:attachMagnet});
+    if(id==='magnetFlip') L.push({id, label:'눌러서 뒤집어요', r:46, pos:()=>MAGH, tap:flipMagnet});
+    if(id==='clipR' || id==='clipB'){
+      const k = id==='clipR' ? 'R' : 'B';
+      L.push({id, label:'끌어서 연결', r:40, pos:()=>clipPos(k), drag:true, off:()=>SC.clip[k].conn,
+        setPos:p=>{SC.clip[k].x=clamp(p.x,20,980); SC.clip[k].y=clamp(p.y,330,610);},
+        drop:()=>{ if(dist(SC.clip[k],POST[k])<110) connectClip(k); else backClip(k); }, tap:()=>connectClip(k)});
+    }
+    if(id==='wires') L.push({id, label:'눌러서 바꿔 꽂아요', r:46, pos:()=>({x:595,y:488}), tap:swapWires});
+  });
+  if(c.sw) L.push({id:'sw', cls:'swc', label:'눌러서 켜요', r:44, pos:()=>SWP, tap:()=>setSwitch(!SC.on), off:()=>SC.on});
+  if(c.strength) L.push({id:'knob', label:'세기 바꾸기', r:36, bubOff:{x:112,y:86}, pos:()=>KNOB, tap:()=>setStrength(SC.strength==='weak'?'strong':'weak')});
+  return L;
+}
+function buildHS(){
+  HS = hsDefs(); HSMAP = {};
+  const g = $('#hs'); g.innerHTML = '';
+  HS.forEach(h => {
+    HSMAP[h.id] = h;
+    const w = h.label.length*25+44;
+    const el = document.createElementNS(NS,'g');
+    el.setAttribute('class','hs'+(h.cls?' '+h.cls:'')); el.dataset.id = h.id;
+    el.setAttribute('tabindex','0'); el.setAttribute('role','button'); el.setAttribute('aria-label', h.label);
+    el.innerHTML = '<circle class="ringo" r="'+(h.r+6)+'"/><circle class="ring" r="'+h.r+'"/>'
+      + '<g class="bub"><rect x="'+(-w/2)+'" y="-20" width="'+w+'" height="40" rx="20"/><text y="8">'+h.label+'</text></g>'
+      + '<circle class="hit" r="'+(h.r+14)+'" fill="transparent"/>';
+    el.addEventListener('keydown', e => { if(e.key==='Enter' || e.key===' '){ e.preventDefault(); if(h.tap) h.tap(); } });
+    h.el = el; h.bub = el.querySelector('.bub'); h.w = w; g.appendChild(el);
+  });
+  $('#scene').style.touchAction = HS.some(h => h.drag) ? 'none' : 'auto';
+}
+function drawHS(){
+  HS.forEach(h => {
+    const p = h.pos(); h.el.setAttribute('transform','translate('+p.x.toFixed(1)+' '+p.y.toFixed(1)+')');
+    const below = p.y < 150; let by = below ? h.r+40 : -(h.r+40), bx = clamp(p.x, h.w/2+6, 1000-h.w/2-6) - p.x;
+    if(h.bubOff){ bx = h.bubOff.x; by = h.bubOff.y; }
+    h.bub.setAttribute('transform','translate('+bx.toFixed(1)+' '+by+')');
+    h.el.classList.toggle('off', !!(h.off && h.off()));
+  });
+}
+function svgPt(e){
+  const svg = $('#scene'), pt = svg.createSVGPoint(); pt.x = e.clientX; pt.y = e.clientY;
+  const q = pt.matrixTransform(svg.getScreenCTM().inverse()); return {x:q.x, y:q.y};
+}
+(() => {
+  const svg = $('#scene');
+  svg.addEventListener('pointerdown', e => {
+    const t = e.target.closest && e.target.closest('.hs'); if(!t) return;
+    const h = HSMAP[t.dataset.id]; if(!h || !h.drag) return;
+    if(h.off && h.off()) return;
+    if(SC.busy && !h.drag) return;
+    e.preventDefault(); drag = {h, start:svgPt(e), moved:false};
+    try{ svg.setPointerCapture(e.pointerId); }catch(_){}
+  });
+  svg.addEventListener('pointermove', e => {
+    if(!drag) return; const p = svgPt(e);
+    if(!drag.moved && Math.hypot(p.x-drag.start.x, p.y-drag.start.y) > 12) drag.moved = true;
+    if(drag.moved) drag.h.setPos(p);
+  });
+  const end = () => { if(!drag) return; const d = drag; drag = null; if(d.moved) d.h.drop(); else d.h.tap(); };
+  svg.addEventListener('pointerup', end); svg.addEventListener('pointercancel', end);
+  svg.addEventListener('click', e => {
+    const t = e.target.closest && e.target.closest('.hs'); if(!t) return;
+    const h = HSMAP[t.dataset.id]; if(h && !h.drag && h.tap) h.tap();
+  });
+})();
+
+/* 메인 루프 */
+let lastT = performance.now(), stableCnt = 0;
+function frame(now){
+  const dt = Math.min(.05, (now-lastT)/1000); lastT = now;
+  runAnims(now);
+  if($('#scene').style.display!=='none'){
+    const tg = targetX(), w = 7.5, z = .28;
+    SC.v += (-w*w*(SC.x-tg) - 2*z*w*SC.v)*dt; SC.x += SC.v*dt;
+    if(!SC.on && Math.abs(SC.x)<.3 && Math.abs(SC.v)<.5){ SC.x = 0; SC.v = 0; }
+    /* 측정값 기록: 코일이 멈추었을 때 */
+    if(SC.on && circuitOK() && !SC.rec){
+      if(Math.abs(SC.v)<6 && Math.abs(SC.x-tg)<1.5){ stableCnt++; } else stableCnt = 0;
+      if(stableCnt>12){ SC.rec = true; MEAS[SC.strength] = Math.abs(SC.x)/PXCM; stableCnt = 0; renderObs(); }
+    } else stableCnt = 0;
+    renderPoles(); drawCore(); drawCoilFlow(dt); drawWires(); drawDots(dt); drawSupply(dt); drawRuler(); drawInset(); drawHS();
+    $('#labels').style.display = SC.showLabels ? '' : 'none';
+    $('#lbMag').style.display = SC.attached ? '' : 'none';
+  }
+  requestAnimationFrame(frame);
+}
+
+/* ================= 비교 그림 ================= */
+const cmText = x => Math.abs(x)<1 ? '움직이지 않음' : (x>0 ? '자석 쪽으로 ' : '자석 반대쪽으로 ') + (Math.abs(x)/PXCM).toFixed(1) + ' cm';
+function pairInner(items, H){
+  const pw = 490, ph = 392, pad = Math.max(6, (H-(46+8+ph+46))/2);
+  let s = '<rect width="1000" height="'+H+'" fill="url(#gWall)"/>';
+  items.forEach((it,i) => {
+    const x0 = 5 + i*495, y0 = pad + 54;
+    s += '<rect x="'+x0+'" y="'+(pad+46)+'" width="'+pw+'" height="'+(ph+8)+'" rx="18" fill="#fff" opacity=".5"/>';
+    s += '<svg x="'+x0+'" y="'+y0+'" width="'+pw+'" height="'+ph+'" viewBox="400 48 500 400" overflow="hidden">'
+       + '<rect x="400" y="48" width="500" height="400" fill="url(#gWall)"/>'
+       + '<rect x="400" y="440" width="500" height="20" fill="url(#gBoard)"/>'
+       + coreSVG({x:it.x, magN:it.magN, mag:{x:MAGH.x, y:MAGH.y, rot:0}, cur:it.swapped?'ccw':'cw', cp:it.swapped?'N':'S', field:false, ghost:true})
+       + '</svg>';
+    const lw = it.label.length*24+44;
+    s += '<rect x="'+(x0+pw/2-lw/2)+'" y="'+pad+'" width="'+lw+'" height="40" rx="20" fill="#2563eb"/>'
+       + '<text x="'+(x0+pw/2)+'" y="'+(pad+29)+'" text-anchor="middle" font-size="26" font-weight="900" fill="#fff">'+it.label+'</text>'
+       + '<text x="'+(x0+pw/2)+'" y="'+(y0+ph+34)+'" text-anchor="middle" font-size="30" font-weight="900" fill="#0f172a">'+cmText(it.x)+'</text>'
+       + '<text x="'+(x0+pw/2)+'" y="'+(y0+ph+68)+'" text-anchor="middle" font-size="25" font-weight="800" fill="'+(it.magN===it.swapped?'#b91c1c':'#047857')+'">자석 '+(it.magN?'N':'S')+'극 · 코일 '+(it.swapped?'N':'S')+'극 → '+(it.magN===it.swapped?'같은 극 (밀어냄)':'다른 극 (끌어당김)')+'</text>';
+  });
+  return s;
+}
+const PAIRS = {
+  3:[{label:'과정 2', x:KPA, magN:true, swapped:false}, {label:'과정 3', x:-KPA, magN:false, swapped:false}],
+  4:[{label:'과정 3', x:-KPA, magN:false, swapped:false}, {label:'과정 4', x:KPA, magN:false, swapped:true}],
+  5:[{label:'과정 4 · 약한 전류', x:KPA, magN:false, swapped:true}, {label:'과정 5 · 센 전류', x:2*KPA, magN:false, swapped:true}]
+};
+const TABS6 = [{p:3, label:'과정 2 ↔ 3 (자기장 방향)'}, {p:4, label:'과정 3 ↔ 4 (전류 방향)'}, {p:5, label:'과정 4 ↔ 5 (전류 세기)'}];
+const CMPCAP = {
+  3:'과정 2 ↔ 과정 3 : 두 그림에서 코일과 자석 사이의 거리를 비교해 보세요.',
+  4:'과정 3 ↔ 과정 4 : 두 그림에서 코일과 자석 사이의 거리를 비교해 보세요.'
+};
+
+/* ================= 화면 그리기 ================= */
+function renderTop(){
+  $('#score').textContent = '⭐ '+stars()+' / '+ALLQ.length;
+  const mx = maxStep();
+  $('#bar6').innerHTML = STEPS.map(s => {
+    const done = isDone(s.n), active = s.n===cur, locked = s.n>mx;
+    return '<li><button class="sb'+(active?' active':'')+(done&&!active?' done':'')+(locked?' locked':'')+'" data-n="'+s.n+'"'+(locked?' aria-disabled="true"':'')+(active?' aria-current="step"':'')+'>'
+      + '<span class="no">'+(done&&!active?'✔':s.n)+'</span><span>'+s.short+'</span></button></li>';
+  }).join('');
+  document.querySelectorAll('.sb').forEach(b => b.addEventListener('click', () => go(+b.dataset.n)));
+  $('#rec').innerHTML = STEPS.filter(s => s.n>=2 && s.n<=5).map(s => {
+    const d = s.n>=4 ? qs[String(s.n)].done : isDone(s.n);
+    return '<tr><td>과정 '+s.n+'</td><td>'+s.changed+'</td><td class="'+(d?'yes':'empty')+'">'+(d? s.move : (s.n>=4 ? '정리 문제를 풀면 기록돼요' : '관찰하고 문제를 풀면 기록돼요'))+'</td></tr>';
+  }).join('');
+}
+function refreshStage(){
+  $('#onPill').hidden = !SC.on;
+  renderActs();
+}
+function renderActs(){
+  const c = cfg(), box = $('#acts'); box.innerHTML = '';
+  if(c.btn){
+    const b = document.createElement('button'); b.className = 'btn primary'; b.textContent = c.btn.label;
+    b.addEventListener('click', () => { if(!SC.busy) ACT[c.btn.fn](); }); box.appendChild(b);
+  }
+  if(c.strength){
+    const seg = document.createElement('div'); seg.className = 'seg'; seg.setAttribute('role','group'); seg.setAttribute('aria-label','전류의 세기');
+    [['weak','전류 약하게 (1.0 A)'],['strong','전류 세게 (2.0 A)']].forEach(([k,t]) => {
+      const b = document.createElement('button'); b.textContent = t;
+      if(SC.strength===k) b.className = 'on';
+      b.setAttribute('aria-pressed', SC.strength===k);
+      b.addEventListener('click', () => setStrength(k)); seg.appendChild(b);
+    });
+    box.appendChild(seg);
+  }
+  if(c.sw){
+    const b = document.createElement('button'); b.className = 'btn sw'+(SC.on?' on':'');
+    b.textContent = SC.on ? '⏻ 스위치 끄기' : '⚡ 스위치 켜기';
+    b.setAttribute('aria-pressed', SC.on);
+    b.addEventListener('click', () => setSwitch(!SC.on)); box.appendChild(b);
+  }
+  const g = document.createElement('span'); g.className = 'grow'; box.appendChild(g);
+  if(cur<6){
+    [['showLabels','🏷 이름 보기']].forEach(([k,t]) => {
+      const b = document.createElement('button'); b.className = 'btn tool'+(SC[k]?' on':''); b.textContent = t;
+      b.setAttribute('aria-pressed', SC[k]); b.addEventListener('click', () => { SC[k] = !SC[k]; lastCore = ''; renderActs(); }); box.appendChild(b);
+    });
+  }
+  const z = document.createElement('button'); z.className = 'btn tool'; z.textContent = '🔍 크게 보기';
+  z.addEventListener('click', () => openLb(cur===6 ? $('#pair') : $('#scene'))); box.appendChild(z);
+}
+function renderTabs(){
+  const t = $('#tabs');
+  if(cur!==6){ t.hidden = true; return; }
+  t.hidden = false;
+  t.innerHTML = TABS6.map((x,i) => '<button class="'+(i===tab6?'on':'')+'" data-i="'+i+'">'+x.label+'</button>').join('');
+  t.querySelectorAll('button').forEach(b => b.addEventListener('click', () => { tab6 = +b.dataset.i; drawPair(); renderTabs(); }));
+}
+function drawPair(){ $('#pair').innerHTML = pairInner(PAIRS[TABS6[tab6].p], 625); }
+
+function renderTask(){
+  const s = STEPS[cur-1], c = cfg();
+  let h = '<div class="head"><span class="tag">과정 '+cur+'</span>'
+        + (s.tag ? '<span class="tag '+(cur===6?'ask':'obsv')+'">'+s.tag+'</span>' : '') + '</div>'
+        + '<div class="txt">'+s.text+'</div>'
+        + '<div class="how">👉 '+c.how+'</div>';
+  if(cur===1 && st[1].phase==='a') h += '<div class="safety">⚠ <b>안전</b> 네오디뮴 자석은 자기력이 세고 깨지기 쉬우므로 다룰 때 손을 다치지 않도록 주의한다.</div>';
+  $('#task').innerHTML = h;
+}
+function renderObs(){
+  const box = $('#obsBox'), p = $('#obs');
+  if(cur===1 || cur===6){ box.hidden = true; return; }
+  box.hidden = false;
+  const c = cfg(), done = isDone(cur);
+  if(cur===5 && done && !SC.on && MEAS.weak!=null && MEAS.strong!=null)
+    p.textContent = '측정 결과: 전류 1.0 A일 때 '+MEAS.weak.toFixed(1)+' cm, 전류 2.0 A일 때 '+MEAS.strong.toFixed(1)+' cm 움직였어요. 문제는 정리에서 풀어요.';
+  else if(cur>=4 && done && !SC.on) p.textContent = '관찰 완료! 코일이 어떻게 움직였는지 기억해 두세요. 문제는 정리에서 풀어요.';
+  else if(done && obsOverride) p.textContent = obsOverride;
+  else if(SC.on) p.textContent = cur===5 ? '전류가 약할 때와 셀 때, 코일이 움직이는 정도를 비교해 보세요.' : '코일이 어느 쪽으로, 얼마나 움직이는지 잘 살펴보세요.';
+  else if(c.sw) p.textContent = seenReady() ? '아래 내용을 확인해 보세요.' : '스위치를 켜고 코일의 움직임을 관찰해 보세요.';
+  else p.textContent = '위의 동작을 먼저 해 보세요.';
+}
+function renderCmp(){
+  const box = $('#cmp');
+  if(PAIRS[cur] && cur<5 && st[cur].seen.main){
+    box.innerHTML = '<div class="cmp"><svg viewBox="0 0 1000 560" role="img" aria-label="'+CMPCAP[cur]+'">'+pairInner(PAIRS[cur],560)+'</svg><div class="cap">🔍 '+CMPCAP[cur]+'</div></div>';
+    box.querySelector('svg').addEventListener('click', e => openLb(e.currentTarget));
+  } else box.innerHTML = '';
+}
+function qHTML(q){
+  const s = qs[q.id];
+  let h = '<div class="q"><span class="tag '+q.kind+'">'+q.tag+'</span><h3>'+q.q+'</h3><div class="opts">';
+  s.order.forEach(i => {
+    let cls = 'opt', mark = '';
+    if(s.done){ cls += i===q.ans ? ' right' : ' dim'; if(i===q.ans) mark = '✔ '; }
+    else if(s.wrong.has(i)){ cls += ' wrong'; mark = '✘ '; }
+    h += '<button class="'+cls+'" data-q="'+q.id+'" data-i="'+i+'">'+mark+q.opts[i]+'</button>';
+  });
+  h += '</div>';
+  if(s.done) h += '<div class="fb ok"><b>'+(q.kind==='obsv' ? '관찰 결과' : '모범 답안')+'</b>'+q.model+'</div>';
+  else if(s.wrong.size) h += '<div class="fb no">앗, 다시 생각해 보세요! 💡 '+q.hint+'</div>';
+  return h + '</div>';
+}
+function renderQs(){
+  const box = $('#qbox'); let h = '';
+  if(cur>=2 && cur<=5){
+    const c = cfg();
+    if(!c.sw){ box.innerHTML = ''; return; }
+    if(!seenReady()){
+      h = '<div class="hint">👀 '+(cur===5 ? '전류를 약하게 한 경우와 세게 한 경우 모두 스위치를 켜서 관찰해 보세요.'
+            : cur===4 ? '스위치를 켜고 코일의 움직임을 관찰해 보세요.' : '스위치를 켜서 코일의 움직임을 관찰하면 문제가 나타나요.')+'</div>';
+    } else if(cur>=4){
+      h = '<div class="okbox">✔ 관찰 완료! 코일이 어떻게 움직였는지 잘 기억해 두세요. 문제는 <b>정리</b>에서 풀어요.</div>';
+    } else h = stepQs(cur).map(qHTML).join('');
+  } else if(cur===6){
+    const total = QS[6].length, n = QS[6].filter(q => qs[q.id].done).length;
+    h = '<div class="prog"><span>정리 문제 <b>'+n+' / '+total+'</b> 맞힘</span><i style="width:'+(n/total*100)+'%"></i></div>';
+    h += QS[6].map(qHTML).join('');
+    if(n===total){
+      h += '<div class="self"><h3>✅ 나의 활동 확인하기</h3>';
+      SELF.forEach(it => {
+        h += '<div class="it"><span class="tag obsv tg">'+it.tag+'</span>'+it.text+'<div class="lv">'
+          + ['상','중','하'].map(v => '<button class="'+(self[it.k]===v?'on':'')+'" data-k="'+it.k+'" data-v="'+v+'">'+v+'</button>').join('')
+          + '</div></div>';
+      });
+      h += '</div>';
+      if(self.fn && self.att) h += '<div class="finish">🎉 탐구 완료! 4문제를 모두 맞혔어요.<br>첫 시도에 맞힌 문제 ⭐ '+stars()+' / '+ALLQ.length+'</div>';
+    }
+  }
+  box.innerHTML = h;
+  box.querySelectorAll('.opt').forEach(b => b.addEventListener('click', () => answer(b.dataset.q, +b.dataset.i)));
+  box.querySelectorAll('.lv button').forEach(b => b.addEventListener('click', () => { self[b.dataset.k] = b.dataset.v; renderQs(); renderTop(); }));
+}
+function renderNav(){
+  $('#prev').disabled = cur===1;
+  const n = $('#next'); n.disabled = cur===6 || !isDone(cur);
+  n.style.visibility = cur===6 ? 'hidden' : 'visible';
+}
+let lastPoles = '';
+const coilFaceN = () => SC.swapped;   // 자석을 마주 보는 코일의 면: 전류가 반시계 방향이면 N극, 시계 방향이면 S극
+const poleSpan = n => '<b style="color:'+(n?'#dc2626':'#2563eb')+'">'+(n?'N극':'S극')+'</b>';
+function polesSVG(magN, coilN, reveal){
+  const same = magN===coilN, col = n => n ? '#ef4444' : '#2563eb', L = n => n ? 'N' : 'S';
+  const half = (x,n) => '<rect x="'+x+'" y="52" width="65" height="80" fill="'+col(n)+'"/>'
+    + '<text x="'+(x+32.5)+'" y="105" text-anchor="middle" font-size="36" font-weight="900" fill="#fff">'+L(n)+'</text>';
+  const arrow = (x1,x2,y,c) => {
+    const a = x2>x1 ? 0 : 180;
+    return '<line x1="'+x1+'" y1="'+y+'" x2="'+x2+'" y2="'+y+'" stroke="'+c+'" stroke-width="8" stroke-linecap="round"/>'
+         + '<polygon points="0,-12 22,0 0,12" transform="translate('+x2+' '+y+') rotate('+a+')" fill="'+c+'"/>';
+  };
+  let s = '<svg viewBox="0 0 420 200" role="img" aria-label="코일과 자석이 마주 보는 극">';
+  s += half(20, !coilN) + half(85, coilN) + '<rect x="20" y="52" width="130" height="80" rx="6" fill="none" stroke="#d97706" stroke-width="6"/>';
+  s += half(270, magN) + half(335, !magN) + '<rect x="270" y="52" width="130" height="80" rx="6" fill="none" stroke="#475569" stroke-width="6"/>';
+  s += '<text x="85" y="162" text-anchor="middle" font-size="22" font-weight="900" fill="#7c2d12">코일(전자석)</text>'
+     + '<text x="335" y="162" text-anchor="middle" font-size="22" font-weight="900" fill="#334155">자석</text>'
+     + '<text x="117" y="42" text-anchor="middle" font-size="17" font-weight="800" fill="#475569">마주 보는 면</text>'
+     + '<text x="302" y="42" text-anchor="middle" font-size="17" font-weight="800" fill="#475569">마주 보는 면</text>';
+  s += '<text x="210" y="82" text-anchor="middle" font-size="26" font-weight="900" fill="'+(same?'#b91c1c':'#047857')+'">'+(same?'같은 극':'다른 극')+'</text>';
+  if(reveal){
+    if(same) s += arrow(190,160,108,'#b91c1c') + arrow(230,260,108,'#b91c1c');
+    else     s += arrow(160,190,108,'#047857') + arrow(260,230,108,'#047857');
+    s += '<text x="210" y="148" text-anchor="middle" font-size="25" font-weight="900" fill="'+(same?'#b91c1c':'#047857')+'">'+(same?'밀어내요':'끌어당겨요')+'</text>';
+  } else {
+    s += '<text x="210" y="122" text-anchor="middle" font-size="40" font-weight="900" fill="#94a3b8">?</text>'
+       + '<text x="210" y="150" text-anchor="middle" font-size="17" font-weight="800" fill="#64748b">스위치를 켜 보세요</text>';
+  }
+  return s + '</svg>';
+}
+function renderPoles(){
+  const box = $('#poles');
+  const ok = cur>=2 && cur<=5 && circuitOK() && (cur>2 || st[2].phase==='b');
+  if(!ok){ if(box.innerHTML) box.innerHTML = ''; lastPoles = ''; return; }
+  const N = SC.magN, cN = coilFaceN(), cw = !SC.swapped, same = N===cN;
+  const reveal = Object.values(st[cur].seen).some(Boolean);
+  const key = [N,cN,reveal].join('|'); if(key===lastPoles && box.innerHTML) return; lastPoles = key;
+  box.innerHTML = '<div class="rule"><h3>🧲 왜 움직일까? 마주 보는 극으로 알아봐요</h3>'
+    + '<div class="rows">'
+    + '<div class="row r1"><span class="ic">①</span><span>코일에 흐르는 전류의 방향<small>전류는 전원 장치의 (+)극에서 나와 코일을 지나 (−)극으로 돌아가요. 지금은 <b>'+(cw?'왼쪽':'오른쪽')+' 도선(▼)으로 들어와서</b> 코일을 돌고 <b>'+(cw?'오른쪽':'왼쪽')+' 도선(▲)으로 나가요.</b> 자석 쪽에서 보면 <b>'+(cw?'시계':'반시계')+' 방향</b>이에요.'+(SC.swapped ? '<br>💡 전선을 바꿔 꽂아서 들어오는 곳과 나가는 곳이 서로 바뀌었어요!' : '')+'</small></span></div>'
+    + '<div class="row r2"><span class="ic">②</span><span>전류가 흐르는 코일은 전자석!<small>자석을 마주 보는 코일의 면은 '+poleSpan(cN)+'이에요.<br>(시계 방향 → S극, 반시계 방향 → N극)</small></span></div>'
+    + '</div>' + polesSVG(N, cN, reveal)
+    + '<div class="rows">'
+    + '<div class="row r3"><span class="ic">③</span><span>마주 보는 극 비교<small>자석은 '+poleSpan(N)+', 코일은 '+poleSpan(cN)+' → <b>'+(same?'같은 극':'다른 극')+'끼리</b> 마주 봐요.</small></span></div>'
+    + '<div class="row r4"><span class="ic">④</span><span>'
+    + (reveal ? (same ? '같은 극끼리는 서로 <b>밀어내요</b><small>그래서 코일이 자석에서 멀어져요.</small>'
+                      : '다른 극끼리는 서로 <b>끌어당겨요</b><small>그래서 코일이 자석 쪽으로 움직여요.</small>')
+              : '스위치를 켜서 확인해요<small>같은 극끼리는 밀어내고, 다른 극끼리는 끌어당겨요.</small>')
+    + '</span></div></div></div>';
+}
+function renderPanels(){ renderTask(); renderObs(); renderCmp(); renderQs(); renderNav(); renderTop(); renderPoles(); }
+
+function renderAll(){
+  const six = cur===6;
+  $('#scene').style.display = six ? 'none' : '';
+  $('#pair').style.display = six ? '' : 'none';
+  $('#stepPill').textContent = '과정 '+cur+' · '+STEPS[cur-1].short; $('#stepPill').hidden = six;
+  renderTabs(); if(six) drawPair();
+  lastCore = ''; lastInset = ''; lastDisp = '';
+  buildHS(); refreshStage(); renderPanels();
+}
+function enterStep(){ applyStepState(); renderAll(); }
+
+/* 크게 보기 */
+function openLb(src){
+  const lb = $('#lb'); lb.innerHTML = '';
+  const c = src.cloneNode(true); c.removeAttribute('id');
+  const h = c.querySelector('#hs'); if(h) h.remove();
+  c.style.cssText = 'width:98vw;height:auto;max-height:92vh;background:#fff;border-radius:12px;cursor:default';
+  if(!c.getAttribute('viewBox')) c.setAttribute('viewBox','0 0 1000 625');
+  const x = document.createElement('button'); x.textContent = '닫기 ✕';
+  lb.append(c, x); lb.classList.add('open');
+}
+$('#lb').addEventListener('click', () => $('#lb').classList.remove('open'));
+window.addEventListener('keydown', e => { if(e.key==='Escape') $('#lb').classList.remove('open'); });
+
+enterStep();
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
